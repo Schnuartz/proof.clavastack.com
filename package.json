@@ -1,0 +1,15 @@
+{
+  "name": "secure-ai-proxy-server",
+  "version": "1.0.0",
+  "description": "Ein sicherer Proxy-Server für die Bildanalyse und Seriennummern-Verifikation mit der Gemini API.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/genai": "^0.15.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}

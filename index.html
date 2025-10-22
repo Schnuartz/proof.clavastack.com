@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seriennummern-Verifikation (Sicherer Proxy)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+        }
+        /* Custom file input styling */
+        .file-upload-label {
+            display: block;
+            cursor: pointer;
+            padding: 1rem;
+            border: 2px dashed #059669;
+            border-radius: 0.5rem;
+            background-color: #ecfdf5;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .file-upload-label:hover {
+            background-color: #d1fae5;
+        }
+        .file-upload-label.active {
+            border-color: #10b981;
+            background-color: #a7f3d0;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="container mx-auto">
+        <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-extrabold text-gray-800">Seriennummern-Verifizierung</h1>
+            <p class="text-gray-500 mt-1">Sichere KI-gestützte OCR-Analyse über den Cloud-Proxy.</p>
+        </header>
+
+        <!-- SICHERHEITSHINWEIS -->
+        <div id="security-warning" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl shadow-md mb-6 hidden" role="alert">
+            <strong class="font-bold">Sicherheitshinweis:</strong> Bitte geben Sie zuerst das geheime Authentifizierungs-Token ein, um den sicheren Proxy-Zugriff freizuschalten.
+        </div>
+
+        <!-- AUTHENTIFIZIERUNG -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Authentifizierung</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="password" id="authTokenInput" placeholder="Geheimes Authentifizierungs-Token"
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 transition duration-150">
+                <button id="authButton"
+                        class="px-6 py-3 bg-emerald-600 text-white font-bold rounded-lg shadow-md hover:bg-emerald-700 transition duration-150">
+                    Token speichern & Freischalten
+                </button>
+            </div>
+        </div>
+
+        <!-- UPLOAD UND VERIFIZIERUNG -->
+        <div id="verification-area" class="bg-white p-6 rounded-xl shadow-lg opacity-30 pointer-events-none transition duration-500">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Bild-Upload und Analyse</h2>
+            
+            <!-- Bildupload -->
+            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="displayFileName(this)">
+            <label for="imageInput" id="fileLabel" class="file-upload-label">
+                <svg class="w-8 h-8 mx-auto text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span class="font-semibold text-gray-600">Bilddatei hier auswählen</span>
+                <p id="fileNameDisplay" class="text-sm text-gray-500 mt-1"></p>
+            </label>
+
+            <button id="verifyButton" disabled
+                    class="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center">
+                <span id="buttonText">Seriennummern verifizieren</span>
+                <svg id="loadingSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ERGEBNISSE -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Analyse-Ergebnisse</h2>
+            <div id="resultsTableContainer" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 hidden" id="resultsTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bag ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verifizierte Seriennummer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Ergebnisse werden hier eingefügt -->
+                    </tbody>
+                </table>
+                <p id="initialMessage" class="text-gray-500 text-center py-4">Laden Sie ein Bild hoch und verifizieren Sie es, um die Ergebnisse zu sehen.</p>
+            </div>
+            
+            <button id="copyButton" class="hidden mt-4 px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150" onclick="copyTableContent()">
+                Ergebnisse kopieren
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ***************************************************************
+        // DIESE URL IST DER ENDPUNKT IHRES CLOUD RUN PROXY-SERVERS!
+        // ***************************************************************
+        const PROXY_API_URL = "https://backend-proof-clavastack-com-205299921692.europe-west1.run.app/api/verify-serial-number"; // ANGEPASST
+        // ***************************************************************
+
+        const verificationArea = document.getElementById('verification-area');
+        const authButton = document.getElementById('authButton');
+        const authTokenInput = document.getElementById('authTokenInput');
+        const securityWarning = document.getElementById('security-warning');
+        const imageInput = document.getElementById('imageInput');
+        const verifyButton = document.getElementById('verifyButton');
+        const resultsBody = document.getElementById('resultsBody');
+        const resultsTableContainer = document.getElementById('resultsTableContainer');
+        const resultsTable = document.getElementById('resultsTable');
+        const initialMessage = document.getElementById('initialMessage');
+        const buttonText = document.getElementById('buttonText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const copyButton = document.getElementById('copyButton');
+
+        let isAuthenticated = false;
+        const SECRET_TOKEN = localStorage.getItem('auth_token');
+
+        if (SECRET_TOKEN) {
+            authTokenInput.value = SECRET_TOKEN;
+            checkAuthentication();
+        } else {
+            securityWarning.classList.remove('hidden');
+        }
+
+        authButton.addEventListener('click', () => {
+            const token = authTokenInput.value.trim();
+            if (token) {
+                localStorage.setItem('auth_token', token);
+                checkAuthentication();
+            } else {
+                alert('Bitte geben Sie ein Token ein.');
+            }
+        });
+
+        function checkAuthentication() {
+            const token = localStorage.getItem('auth_token');
+            if (token && PROXY_API_URL.includes("https://")) {
+                isAuthenticated = true;
+                verificationArea.classList.remove('opacity-30', 'pointer-events-none');
+                securityWarning.classList.add('hidden');
+                authButton.textContent = 'Token gespeichert';
+                authButton.disabled = true;
+                authTokenInput.disabled = true;
+                verifyButton.disabled = !imageInput.files.length;
+            }
+        }
+
+        imageInput.addEventListener('change', () => {
+            verifyButton.disabled = !isAuthenticated || !imageInput.files.length;
+        });
+
+        verifyButton.addEventListener('click', processVerification);
+
+        function displayFileName(input) {
+            const display = document.getElementById('fileNameDisplay');
+            const fileLabel = document.getElementById('fileLabel');
+            if (input.files.length > 0) {
+                display.textContent = `Ausgewählt: ${input.files[0].name}`;
+                fileLabel.classList.add('active');
+            } else {
+                display.textContent = '';
+                fileLabel.classList.remove('active');
+            }
+        }
+
+        function setProcessingState(isProcessing) {
+            verifyButton.disabled = isProcessing || !isAuthenticated || !imageInput.files.length;
+            verificationArea.classList.toggle('pointer-events-none', isProcessing);
+            if (isProcessing) {
+                buttonText.textContent = 'Analysiere...';
+                loadingSpinner.classList.remove('hidden');
+            } else {
+                buttonText.textContent = 'Seriennummern verifizieren';
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        function base64EncodeFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function processVerification() {
+            if (!isAuthenticated) return;
+
+            const file = imageInput.files[0];
+            if (!file) return;
+
+            setProcessingState(true);
+            resultsBody.innerHTML = '';
+            initialMessage.classList.add('hidden');
+            resultsTable.classList.add('hidden');
+            copyButton.classList.add('hidden');
+
+            try {
+                // 1. Bild in Base64 umwandeln
+                const base64Data = await base64EncodeFile(file);
+                
+                // 2. Payload erstellen (inkl. Base64-Daten)
+                const payload = {
+                    mimeType: file.type,
+                    data: base64Data
+                };
+
+                // 3. API-Aufruf an den Proxy-Server
+                const response = await fetch(PROXY_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Senden des geheimen Tokens im Header
+                        'X-Auth-Token': localStorage.getItem('auth_token') 
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 401) {
+                    alert('Fehler: Ihr Authentifizierungs-Token ist ungültig. Bitte überprüfen Sie die Eingabe und versuchen Sie es erneut.');
+                    localStorage.removeItem('auth_token');
+                    location.reload(); 
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const errorDetails = await response.json();
+                    alert(`API Fehler (${response.status}): ${errorDetails.error || 'Unbekannter Serverfehler.'}`);
+                    return;
+                }
+
+                const finalResult = await response.json();
+                displayResults(finalResult);
+
+            } catch (error) {
+                console.error("Verifizierungsfehler:", error);
+                alert('Ein unerwarteter Fehler ist aufgetreten. Prüfen Sie die Konsole für Details.');
+            } finally {
+                setProcessingState(false);
+            }
+        }
+
+        function displayResults(results) {
+            resultsBody.innerHTML = '';
+            if (!results || results.length === 0) {
+                initialMessage.textContent = 'Keine Seriennummern gefunden oder verifiziert.';
+                initialMessage.classList.remove('hidden');
+                resultsTable.classList.add('hidden');
+                return;
+            }
+
+            results.forEach(item => {
+                const isFound = item.serialNumber && item.serialNumber !== 'NOT_FOUND';
+                const statusClass = isFound ? 'bg-green-100 text-green-700 font-semibold' : 'bg-red-100 text-red-700 font-semibold';
+                const statusText = isFound ? 'VERIFIZIERT' : 'FEHLT/NICHT EINDEUTIG';
+
+                const row = document.createElement('tr');
+                row.className = isFound ? 'hover:bg-green-50' : 'hover:bg-red-50';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.bagId || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.serialNumber || '---'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 rounded-full ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                `;
+                resultsBody.appendChild(row);
+            });
+
+            resultsTable.classList.remove('hidden');
+            resultsTableContainer.classList.remove('hidden');
+            copyButton.classList.remove('hidden');
+            initialMessage.classList.add('hidden');
+        }
+
+        function copyTableContent() {
+            let csv = "Bag ID\tSeriennummer\tStatus\n";
+            const rows = resultsBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const bagId = cells[0].textContent;
+                const serialNumber = cells[1].textContent;
+                const status = cells[2].querySelector('span').textContent;
+                csv += `${bagId}\t${serialNumber}\t${status}\n`;
+            });
+
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = csv;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            try {
+                document.execCommand('copy');
+                copyButton.textContent = 'Kopiert!';
+                setTimeout(() => {
+                    copyButton.textContent = 'Ergebnisse kopieren';
+                }, 2000);
+            } catch (err) {
+                alert('Kopieren fehlgeschlagen.');
+            } finally {
+                document.body.removeChild(tempTextArea);
+            }
+        }
+
+        // Initiale Prüfung beim Laden
+        checkAuthentication();
+
+    </script>
+</body>
+</html>
