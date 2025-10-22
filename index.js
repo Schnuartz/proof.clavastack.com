@@ -10,13 +10,14 @@ if (!GEMINI_API_KEY || !AUTH_TOKEN) {
     // ACHTUNG: Wir verwenden kein process.exit() mehr hier, um den Server am Laufen zu halten,
     // damit Cloud Run einen ordentlichen 500er-Fehler ausgibt, falls die Keys fehlen.
     console.error("FATAL ERROR: GEMINI_API_KEY oder AUTH_TOKEN fehlt in den Umgebungsvariablen. KI-Funktion wird fehlschlagen.");
+    process.exit(1); // Entfernt, um Server zu starten, um 500er-Fehler
 }
 
 // --- Importe ---
-const express = require('express');
+import express from 'express';
 // Wir benötigen @google/genai, nicht @google/genai-ai
-const { GoogleGenAI } = require('@google/genai');
-const cors = require('cors'); // Für die Cross-Origin-Kommunikation
+import { GoogleGenAI } from '@google/genai';
+import cors from 'cors'; // Für die Cross-Origin-Kommunikation
 
 // --- Initialisierung ---
 const app = express();
