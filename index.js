@@ -35,7 +35,7 @@ app.use(cors({
 }));
 
 // 2. Body Parser: Erlaubt das Verarbeiten von JSON-Anfragen (bis zu 50MB für Bild-Base64)
-app.use(express.json({ limit: '50mb' })); 
+app.use(express.json({ limit: '50mb' }));  
 
 // 3. Health Check / Root Handler
 // Wird aufgerufen, wenn Sie nur die Basis-URL eingeben.
