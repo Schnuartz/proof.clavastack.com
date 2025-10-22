@@ -1,0 +1,60 @@
+name: CI - Node.js Tests
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci --prefer-offline --no-audit --no-progress
+          elif [ -f package.json ]; then
+            npm install --no-audit --no-fund --no-progress
+          else
+            echo "Kein package.json gefunden — überspringe Installation."
+          fi
+
+      - name: Run linter (wenn vorhanden)
+        run: |
+          if [ -f package.json ] && grep -q "\"lint\"" package.json; then
+            npm run lint
+          else
+            echo "Kein lint script in package.json — überspringe Linter."
+          fi
+
+      - name: Run tests (wenn vorhanden)
+        run: |
+          if [ -f package.json ] && grep -q "\"test\"" package.json; then
+            npm test
+          else
+            echo "Kein test script in package.json — überspringe Tests."
+          fi
+
+      - name: Install htmlhint
+        run: npm install -g htmlhint
+
+      - name: HTML/PHP Dateien prüfen mit htmlhint
+        run: |
+          files=$(find . -type f \( -name '*.html' -o -name '*.php' \) -not -path './node_modules/*' -not -path './vendor/*' -print)
+          if [ -z "$files" ]; then
+            echo "Keine HTML/PHP Dateien gefunden — überspringe htmlhint."
+            exit 0
+          fi
+          echo "$files" | xargs htmlhint
+
+      - name: npm audit (Info)
+        run: npm audit --audit-level=moderate || true
