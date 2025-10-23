@@ -99,7 +99,7 @@ app.post('/api/verify-serial-number', authenticate, async (req, res) => {
                 // Erzwingt JSON-Ausgabe
                 responseMimeType: "application/json"
             }
-        });
+        }); 
 
         // Die Antwort ist ein JSON-String. Wir parsen ihn und senden ihn zurück.
         const jsonText = response.candidates[0].content.parts[0].text;
