@@ -1,3 +1,4 @@
+console.log("Starting up ...")
 // --- Umgebungsvariablen laden und prüfen ---
 // Diese Variablen werden von Cloud Run automatisch bereitgestellt, wenn sie konfiguriert sind.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -21,11 +22,12 @@ import cors from 'cors'; // Für die Cross-Origin-Kommunikation
 
 // --- Initialisierung ---
 const app = express();
+console.log("Connecting to Gemini ...");
 // Initialisiert die KI mit dem Key (wird automatisch als undefiniert behandelt, falls Key fehlt)
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY }); 
 
 // --- Middleware ---
-
+console.log("Configuring middleware ...");
 // 1. CORS-Konfiguration: Erlaubt Anfragen von JEDER Domain (*). 
 // Dies ist für das Debugging am einfachsten.
 app.use(cors({
@@ -113,7 +115,7 @@ app.post('/api/verify-serial-number', authenticate, async (req, res) => {
     }
 });
 
-
+console.log("Starting server ...");
 // --- Server starten (Kritischer Teil, um exit(0) zu verhindern) ---
 // Der Server muss auf dem Cloud Run PORT lauschen.
 app.listen(PORT, () => {
