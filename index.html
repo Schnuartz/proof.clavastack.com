@@ -1,592 +1,470 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seriennummern-Verifikation (Sicherer Proxy)</title>
+    <title>Proof of Packaging - ClavaStack</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://opentimestamps.org/assets/javascripts/vendor/opentimestamps.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Specter-inspired dark theme
+                        specter: {
+                            dark: '#0a0e17',
+                            darker: '#060810',
+                            card: '#111827',
+                            border: '#1f2937',
+                            cyan: '#00d4ff',
+                            cyanDark: '#0891b2',
+                            text: '#e5e7eb',
+                            textMuted: '#9ca3af',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            error: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7;
+            background: linear-gradient(180deg, #0a0e17 0%, #060810 100%);
             min-height: 100vh;
         }
-        .container {
-            max-width: 900px;
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }
-        /* Custom file input styling */
-        .file-upload-label {
-            display: block;
-            cursor: pointer;
-            padding: 1rem;
-            border: 2px dashed #059669;
-            border-radius: 0.5rem;
-            background-color: #ecfdf5;
-            text-align: center;
-            transition: all 0.2s;
+        .gradient-text {
+            background: linear-gradient(135deg, #00d4ff 0%, #0891b2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .file-upload-label:hover {
-            background-color: #d1fae5;
-        }
-        .file-upload-label.active {
-            border-color: #10b981;
-            background-color: #a7f3d0;
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.15);
         }
     </style>
 </head>
-<body class="p-4 sm:p-8">
-    <div class="container mx-auto">
-        <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg">
-            <h1 class="text-3xl font-extrabold text-gray-800">Seriennummern-Verifizierung</h1>
-            <p class="text-gray-500 mt-1">Sichere KI-gestützte OCR-Analyse über den Cloud-Proxy.</p>
-        </header>
-
-        <!-- SICHERHEITSHINWEIS -->
-        <div id="security-warning" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl shadow-md mb-6 hidden" role="alert">
-            <strong class="font-bold">Sicherheitshinweis:</strong> Bitte geben Sie zuerst das geheime Authentifizierungs-Token ein, um den sicheren Proxy-Zugriff freizuschalten.
+<body class="text-specter-text">
+    <!-- Header -->
+    <header class="border-b border-specter-border bg-specter-darker/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img src="assets/logo.png" alt="ClavaStack" class="h-10 w-auto" onerror="this.style.display='none'">
+                    <span class="text-xl font-bold">ClavaStack <span class="text-specter-cyan">Proof</span></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- Language Switcher -->
+                    <div class="relative">
+                        <button onclick="toggleLanguageMenu()" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-specter-card border border-specter-border hover:border-specter-cyan transition">
+                            <img id="currentFlag" src="assets/flags/en.svg" alt="EN" class="w-5 h-4 rounded-sm object-cover">
+                            <span id="currentLang" class="text-sm font-medium">EN</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="languageMenu" class="hidden absolute right-0 mt-2 w-40 bg-specter-card border border-specter-border rounded-lg shadow-xl overflow-hidden">
+                            <button onclick="setLanguage('en')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-specter-border transition text-left">
+                                <img src="assets/flags/en.svg" alt="EN" class="w-5 h-4 rounded-sm object-cover">
+                                <span>English</span>
+                            </button>
+                            <button onclick="setLanguage('de')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-specter-border transition text-left">
+                                <img src="assets/flags/de.svg" alt="DE" class="w-5 h-4 rounded-sm object-cover">
+                                <span>Deutsch</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Add New Button -->
+                    <a href="/add/" class="px-4 py-2 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <span data-i18n="addNew">Add New</span>
+                    </a>
+                </div>
+            </div>
         </div>
+    </header>
 
-        <!-- AUTHENTIFIZIERUNG -->
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Authentifizierung</h2>
-            <div class="flex flex-col sm:flex-row gap-4">
-                <input type="password" id="authTokenInput" placeholder="Geheimes Authentifizierungs-Token"
-                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 transition duration-150">
-                <button id="authButton"
-                        class="px-6 py-3 bg-emerald-600 text-white font-bold rounded-lg shadow-md hover:bg-emerald-700 transition duration-150">
-                    Token speichern & Freischalten
+    <!-- Hero Section -->
+    <section class="py-16 sm:py-24 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6">
+                <span class="text-white">Specter Hardware Wallets</span><br>
+                <span class="gradient-text" data-i18n="heroSubtitle">packaged by ClavaStack</span>
+            </h1>
+            <p class="text-2xl sm:text-3xl font-semibold text-specter-cyan mb-8" data-i18n="heroSlogan">
+                Trust the Source, Not the Route
+            </p>
+            <p class="text-lg text-specter-textMuted max-w-2xl mx-auto" data-i18n="heroDescription">
+                Every Specter Hardware Wallet packaged by ClavaStack is cryptographically timestamped on the Bitcoin blockchain.
+                This provides immutable proof of packaging integrity that can be independently verified by anyone.
+            </p>
+        </div>
+    </section>
+
+    <!-- Suppliers Section -->
+    <section class="py-12 px-4 border-t border-specter-border">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-2xl font-bold text-center mb-8" data-i18n="suppliersTitle">Official Suppliers</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="suppliersGrid">
+                <!-- Suppliers will be rendered here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Proof Table Section -->
+    <section class="py-12 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="bg-specter-card border border-specter-border rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-specter-border">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold" data-i18n="proofTableTitle">Verified Packaging Proofs</h2>
+                            <p class="text-specter-textMuted mt-1" data-i18n="proofTableSubtitle">All packages with Bitcoin blockchain timestamps</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
+                                <option value="date-desc" data-i18n="sortNewest">Newest first</option>
+                                <option value="date-asc" data-i18n="sortOldest">Oldest first</option>
+                                <option value="bagId-asc" data-i18n="sortBagIdAsc">Bag ID (asc)</option>
+                                <option value="bagId-desc" data-i18n="sortBagIdDesc">Bag ID (desc)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-specter-darker">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colBagId">Bag ID</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colDate">Date</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colVersion">Version</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colPacker">Packer</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colProof">Blockchain Proof</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colImage">Image</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proofsTableBody" class="divide-y divide-specter-border">
+                            <!-- Proofs will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="emptyState" class="hidden py-16 text-center">
+                    <svg class="w-16 h-16 mx-auto text-specter-textMuted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2" data-i18n="emptyTitle">No proofs yet</h3>
+                    <p class="text-specter-textMuted mb-4" data-i18n="emptyDescription">Start by adding your first packaging proof.</p>
+                    <a href="/add/" class="inline-flex items-center gap-2 px-6 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <span data-i18n="addFirstProof">Add First Proof</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- CSV Export -->
+            <div class="mt-6 flex justify-end">
+                <button onclick="exportCSV()" class="flex items-center gap-2 px-4 py-2 bg-specter-card border border-specter-border rounded-lg hover:border-specter-cyan transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span data-i18n="exportCSV">Export as CSV</span>
                 </button>
             </div>
         </div>
+    </section>
 
-        <!-- UPLOAD UND VERIFIZIERUNG -->
-        <div id="verification-area" class="bg-white p-6 rounded-xl shadow-lg opacity-30 pointer-events-none transition duration-500">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Bild-Upload und Analyse</h2>
-            
-            <!-- Bildupload -->
-            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="displayFileName(this)">
-            <label for="imageInput" id="fileLabel" class="file-upload-label">
-                <svg class="w-8 h-8 mx-auto text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                <span class="font-semibold text-gray-600">Bilddatei hier auswählen</span>
-                <p id="fileNameDisplay" class="text-sm text-gray-500 mt-1"></p>
-            </label>
-
-            <button id="verifyButton" disabled
-                    class="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center">
-                <span id="buttonText">Seriennummern verifizieren</span>
-                <svg id="loadingSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
-        </div>
-
-        <!-- ERGEBNISSE -->
-        <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-gray-700">3. Analyse-Ergebnisse</h2>
-                <div id="sortControls" class="hidden flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Sortieren nach:</label>
-                    <select id="sortSelect" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="date-desc">Datum (neueste zuerst)</option>
-                        <option value="date-asc">Datum (älteste zuerst)</option>
-                        <option value="bagId-asc">Bag ID (aufsteigend)</option>
-                        <option value="bagId-desc">Bag ID (absteigend)</option>
-                    </select>
-                </div>
-            </div>
-            <div id="resultsTableContainer" class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 hidden" id="resultsTable">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bag ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verpacker</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blockchain Proof</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultsBody" class="bg-white divide-y divide-gray-200">
-                        <!-- Ergebnisse werden hier eingefügt -->
-                    </tbody>
-                </table>
-                <p id="initialMessage" class="text-gray-500 text-center py-4">Laden Sie ein Bild hoch und verifizieren Sie es, um die Ergebnisse zu sehen.</p>
+    <!-- Timestamp Proof Modal -->
+    <div id="timestampModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-lg mx-4 p-6 w-full">
+            <div class="flex justify-between items-start mb-6">
+                <h3 class="text-xl font-bold" data-i18n="modalTitle">Blockchain Timestamp Proof</h3>
+                <button onclick="closeTimestampModal()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
             </div>
 
-            <button id="copyButton" class="hidden mt-4 px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150" onclick="copyTableContent()">
-                Ergebnisse kopieren
-            </button>
-        </div>
-
-        <!-- Verpacker-Profil Modal -->
-        <div id="packerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-xl shadow-2xl max-w-md mx-4 p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 id="packerName" class="text-2xl font-bold text-gray-800"></h3>
-                    <button onclick="closePackerModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div id="timestampVerified" class="hidden mb-6 p-4 bg-specter-success/10 border border-specter-success/30 rounded-xl">
+                <div class="flex items-center gap-2 text-specter-success font-semibold mb-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span data-i18n="verifiedTitle">Verified on Bitcoin Blockchain</span>
                 </div>
-                <p id="packerDescription" class="text-gray-600 mb-4"></p>
-                <a id="packerTwitter" href="#" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                    X/Twitter
-                </a>
+                <p class="text-sm text-specter-success/80" data-i18n="verifiedDescription">This record was provably created before the stated time.</p>
             </div>
-        </div>
 
-        <!-- Timestamp Proof Modal -->
-        <div id="timestampModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-xl shadow-2xl max-w-lg mx-4 p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-2xl font-bold text-gray-800">Blockchain Timestamp Proof</h3>
-                    <button onclick="closeTimestampModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div id="timestampPending" class="hidden mb-6 p-4 bg-specter-warning/10 border border-specter-warning/30 rounded-xl">
+                <div class="flex items-center gap-2 text-specter-warning font-semibold mb-2">
+                    <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span data-i18n="pendingTitle">Awaiting Bitcoin Blockchain</span>
                 </div>
+                <p class="text-sm text-specter-warning/80" data-i18n="pendingDescription">Timestamp sent to calendar servers, waiting for Bitcoin block confirmation (few hours).</p>
+            </div>
 
-                <div id="timestampVerified" class="hidden mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div class="flex items-center gap-2 text-green-700 font-semibold mb-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Verifiziert in der Bitcoin Blockchain
-                    </div>
-                    <p class="text-sm text-green-600">Dieser Datensatz wurde nachweislich vor dem angegebenen Zeitpunkt erstellt.</p>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBagId">Bag ID:</span>
+                    <span id="tsModalBagId" class="font-mono text-white"></span>
                 </div>
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalHash">SHA-256 Hash:</span>
+                    <span id="tsModalHash" class="font-mono text-xs text-white break-all max-w-[200px]"></span>
+                </div>
+                <div id="tsBlockHeightRow" class="hidden flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBlock">Bitcoin Block:</span>
+                    <a id="tsModalBlockHeight" href="#" target="_blank" class="font-mono text-specter-cyan hover:underline"></a>
+                </div>
+                <div id="tsBlockTimeRow" class="hidden flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBlockTime">Block Time:</span>
+                    <span id="tsModalBlockTime" class="text-white"></span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalCreated">Created:</span>
+                    <span id="tsModalCreated" class="text-white"></span>
+                </div>
+            </div>
 
-                <div id="timestampPending" class="hidden mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div class="flex items-center gap-2 text-yellow-700 font-semibold mb-2">
-                        <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Warte auf Bitcoin Blockchain
-                    </div>
-                    <p class="text-sm text-yellow-600">Der Timestamp wurde an die Calendar-Server gesendet und wartet auf Aufnahme in einen Bitcoin-Block (ca. einige Stunden).</p>
-                </div>
-
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span class="text-gray-500 text-sm">Bag ID:</span>
-                        <span id="tsModalBagId" class="font-mono text-gray-900"></span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span class="text-gray-500 text-sm">SHA-256 Hash:</span>
-                        <span id="tsModalHash" class="font-mono text-xs text-gray-900 break-all"></span>
-                    </div>
-                    <div id="tsBlockHeightRow" class="hidden flex justify-between items-center py-2 border-b border-gray-100">
-                        <span class="text-gray-500 text-sm">Bitcoin Block:</span>
-                        <a id="tsModalBlockHeight" href="#" target="_blank" class="font-mono text-blue-600 hover:text-blue-800 underline"></a>
-                    </div>
-                    <div id="tsBlockTimeRow" class="hidden flex justify-between items-center py-2 border-b border-gray-100">
-                        <span class="text-gray-500 text-sm">Block-Zeit:</span>
-                        <span id="tsModalBlockTime" class="text-gray-900"></span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span class="text-gray-500 text-sm">Erstellt am:</span>
-                        <span id="tsModalCreated" class="text-gray-900"></span>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex gap-3">
-                    <button id="downloadOtsButton" onclick="downloadOtsFile()" class="flex-1 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                        </svg>
-                        .ots herunterladen
-                    </button>
-                    <button id="verifyExternalButton" onclick="verifyExternal()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                        </svg>
-                        Extern verifizieren
-                    </button>
-                </div>
+            <div class="mt-6 flex gap-3">
+                <button id="downloadOtsButton" onclick="downloadOtsFile()" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span data-i18n="downloadOts">Download .ots</span>
+                </button>
+                <button onclick="verifyExternal()" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                    <span data-i18n="verifyExternal">Verify Externally</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <script>
-        // ***************************************************************
-        // DIESE URL IST DER ENDPUNKT IHRES CLOUD RUN PROXY-SERVERS!
-        // ***************************************************************
-        const PROXY_API_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app/api/verify-serial-number";
-        // ***************************************************************
+    <!-- Image Modal -->
+    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="relative max-w-4xl w-full">
+            <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-specter-cyan text-3xl">&times;</button>
+            <img id="modalImage" src="" alt="Proof Image" class="w-full h-auto rounded-xl">
+            <div class="mt-4 flex justify-center">
+                <a id="downloadImageBtn" href="#" download class="px-6 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span data-i18n="downloadImage">Download Image</span>
+                </a>
+            </div>
+        </div>
+    </div>
 
-        // Verpacker-Profile
-        const PACKERS = {
-            "Schnuartz": {
-                name: "Schnuartz",
-                description: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
-                twitter: "https://x.com/schnuartz"
+    <!-- Footer -->
+    <footer class="border-t border-specter-border py-8 px-4 mt-12">
+        <div class="max-w-7xl mx-auto text-center text-specter-textMuted text-sm">
+            <p>&copy; 2024 ClavaStack. <span data-i18n="footerText">Powered by OpenTimestamps & Bitcoin Blockchain.</span></p>
+        </div>
+    </footer>
+
+    <script>
+        // ===========================================
+        // Internationalization (i18n)
+        // ===========================================
+        const translations = {
+            en: {
+                addNew: "Add New",
+                heroSubtitle: "packaged by ClavaStack",
+                heroSlogan: "Trust the Source, Not the Route",
+                heroDescription: "Every Specter Hardware Wallet packaged by ClavaStack is cryptographically timestamped on the Bitcoin blockchain. This provides immutable proof of packaging integrity that can be independently verified by anyone.",
+                suppliersTitle: "Official Suppliers",
+                proofTableTitle: "Verified Packaging Proofs",
+                proofTableSubtitle: "All packages with Bitcoin blockchain timestamps",
+                sortNewest: "Newest first",
+                sortOldest: "Oldest first",
+                sortBagIdAsc: "Bag ID (asc)",
+                sortBagIdDesc: "Bag ID (desc)",
+                colBagId: "Bag ID",
+                colDate: "Date",
+                colVersion: "Version",
+                colPacker: "Packer",
+                colProof: "Blockchain Proof",
+                colImage: "Image",
+                emptyTitle: "No proofs yet",
+                emptyDescription: "Start by adding your first packaging proof.",
+                addFirstProof: "Add First Proof",
+                exportCSV: "Export as CSV",
+                modalTitle: "Blockchain Timestamp Proof",
+                verifiedTitle: "Verified on Bitcoin Blockchain",
+                verifiedDescription: "This record was provably created before the stated time.",
+                pendingTitle: "Awaiting Bitcoin Blockchain",
+                pendingDescription: "Timestamp sent to calendar servers, waiting for Bitcoin block confirmation (few hours).",
+                modalBagId: "Bag ID:",
+                modalHash: "SHA-256 Hash:",
+                modalBlock: "Bitcoin Block:",
+                modalBlockTime: "Block Time:",
+                modalCreated: "Created:",
+                downloadOts: "Download .ots",
+                verifyExternal: "Verify Externally",
+                downloadImage: "Download Image",
+                footerText: "Powered by OpenTimestamps & Bitcoin Blockchain.",
+                timestamped: "Timestamped",
+                pending: "Pending...",
+                viewImage: "View"
+            },
+            de: {
+                addNew: "Hinzufugen",
+                heroSubtitle: "verpackt von ClavaStack",
+                heroSlogan: "Vertraue der Quelle, nicht dem Weg",
+                heroDescription: "Jede von ClavaStack verpackte Specter Hardware Wallet wird kryptografisch auf der Bitcoin-Blockchain mit einem Zeitstempel versehen. Dies bietet einen unveranderlichen Nachweis der Verpackungsintegritat, der von jedem unabhangig uberpruft werden kann.",
+                suppliersTitle: "Offizielle Handler",
+                proofTableTitle: "Verifizierte Verpackungsnachweise",
+                proofTableSubtitle: "Alle Pakete mit Bitcoin-Blockchain-Zeitstempeln",
+                sortNewest: "Neueste zuerst",
+                sortOldest: "Alteste zuerst",
+                sortBagIdAsc: "Bag ID (aufsteigend)",
+                sortBagIdDesc: "Bag ID (absteigend)",
+                colBagId: "Bag ID",
+                colDate: "Datum",
+                colVersion: "Version",
+                colPacker: "Verpacker",
+                colProof: "Blockchain Nachweis",
+                colImage: "Bild",
+                emptyTitle: "Noch keine Nachweise",
+                emptyDescription: "Fugen Sie Ihren ersten Verpackungsnachweis hinzu.",
+                addFirstProof: "Ersten Nachweis hinzufugen",
+                exportCSV: "Als CSV exportieren",
+                modalTitle: "Blockchain Zeitstempel-Nachweis",
+                verifiedTitle: "Verifiziert auf der Bitcoin Blockchain",
+                verifiedDescription: "Dieser Datensatz wurde nachweislich vor dem angegebenen Zeitpunkt erstellt.",
+                pendingTitle: "Warte auf Bitcoin Blockchain",
+                pendingDescription: "Zeitstempel an Calendar-Server gesendet, warte auf Bitcoin-Block-Bestatigung (einige Stunden).",
+                modalBagId: "Bag ID:",
+                modalHash: "SHA-256 Hash:",
+                modalBlock: "Bitcoin Block:",
+                modalBlockTime: "Block-Zeit:",
+                modalCreated: "Erstellt am:",
+                downloadOts: ".ots herunterladen",
+                verifyExternal: "Extern verifizieren",
+                downloadImage: "Bild herunterladen",
+                footerText: "Powered by OpenTimestamps & Bitcoin Blockchain.",
+                timestamped: "Zeitgestempelt",
+                pending: "Ausstehend...",
+                viewImage: "Ansehen"
             }
         };
 
-        const verificationArea = document.getElementById('verification-area');
-        const authButton = document.getElementById('authButton');
-        const authTokenInput = document.getElementById('authTokenInput');
-        const securityWarning = document.getElementById('security-warning');
-        const imageInput = document.getElementById('imageInput');
-        const verifyButton = document.getElementById('verifyButton');
-        const resultsBody = document.getElementById('resultsBody');
-        const resultsTableContainer = document.getElementById('resultsTableContainer');
-        const resultsTable = document.getElementById('resultsTable');
-        const initialMessage = document.getElementById('initialMessage');
-        const buttonText = document.getElementById('buttonText');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const copyButton = document.getElementById('copyButton');
-        const sortControls = document.getElementById('sortControls');
-        const sortSelect = document.getElementById('sortSelect');
-        const packerModal = document.getElementById('packerModal');
-        const timestampModal = document.getElementById('timestampModal');
+        let currentLanguage = localStorage.getItem('language') || 'en';
 
-        let isAuthenticated = false;
-        let currentResults = []; // Speichert Ergebnisse für Sortierung
-        let currentTimestampData = null; // Speichert aktuelle Timestamp-Daten für Modal
-        const SECRET_TOKEN = localStorage.getItem('auth_token');
-
-        if (SECRET_TOKEN) {
-            authTokenInput.value = SECRET_TOKEN;
-            checkAuthentication();
-        } else {
-            securityWarning.classList.remove('hidden');
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            updateLanguage();
+            toggleLanguageMenu();
         }
 
-        authButton.addEventListener('click', () => {
-            const token = authTokenInput.value.trim();
-            if (token) {
-                localStorage.setItem('auth_token', token);
-                checkAuthentication();
-            } else {
-                alert('Bitte geben Sie ein Token ein.');
-            }
-        });
-
-        function checkAuthentication() {
-            const token = localStorage.getItem('auth_token');
-            if (token && PROXY_API_URL.includes("https://")) {
-                isAuthenticated = true;
-                verificationArea.classList.remove('opacity-30', 'pointer-events-none');
-                securityWarning.classList.add('hidden');
-                authButton.textContent = 'Token gespeichert';
-                authButton.disabled = true;
-                authTokenInput.disabled = true;
-                verifyButton.disabled = !imageInput.files.length;
-            }
-        }
-
-        imageInput.addEventListener('change', () => {
-            verifyButton.disabled = !isAuthenticated || !imageInput.files.length;
-        });
-
-        verifyButton.addEventListener('click', processVerification);
-
-        sortSelect.addEventListener('change', () => {
-            if (currentResults.length > 0) {
-                displayResults(currentResults, false);
-            }
-        });
-
-        function displayFileName(input) {
-            const display = document.getElementById('fileNameDisplay');
-            const fileLabel = document.getElementById('fileLabel');
-            if (input.files.length > 0) {
-                display.textContent = `Ausgewählt: ${input.files[0].name}`;
-                fileLabel.classList.add('active');
-            } else {
-                display.textContent = '';
-                fileLabel.classList.remove('active');
-            }
-        }
-
-        function setProcessingState(isProcessing, statusText = 'Analysiere...') {
-            verifyButton.disabled = isProcessing || !isAuthenticated || !imageInput.files.length;
-            verificationArea.classList.toggle('pointer-events-none', isProcessing);
-            if (isProcessing) {
-                buttonText.textContent = statusText;
-                loadingSpinner.classList.remove('hidden');
-            } else {
-                buttonText.textContent = 'Bags analysieren';
-                loadingSpinner.classList.add('hidden');
-            }
-        }
-
-        function base64EncodeFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64String = reader.result.split(',')[1];
-                    resolve(base64String);
-                };
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) {
+                    el.textContent = t[key];
+                }
             });
+
+            // Update flag and language code
+            document.getElementById('currentLang').textContent = currentLanguage.toUpperCase();
+            document.getElementById('currentFlag').src = `assets/flags/${currentLanguage}.svg`;
+
+            // Re-render proofs table with translated content
+            renderProofs();
         }
 
-        // =====================================================
-        // OpenTimestamps Funktionen
-        // =====================================================
-
-        // Hilfsfunktion: Bytes zu Hex
-        function bytesToHex(bytes) {
-            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        function toggleLanguageMenu() {
+            const menu = document.getElementById('languageMenu');
+            menu.classList.toggle('hidden');
         }
 
-        // Hilfsfunktion: Hex zu Bytes
-        function hexToBytes(hex) {
-            const bytes = new Uint8Array(hex.length / 2);
-            for (let i = 0; i < hex.length; i += 2) {
-                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-            }
-            return bytes;
-        }
-
-        // SHA-256 Hash berechnen
-        async function sha256Hash(data) {
-            const encoder = new TextEncoder();
-            const dataBuffer = encoder.encode(data);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-            return new Uint8Array(hashBuffer);
-        }
-
-        // Timestamp für einen Bag erstellen
-        async function createTimestamp(bagData) {
-            try {
-                // Erstelle einen eindeutigen String aus den Bag-Daten
-                const dataString = JSON.stringify({
-                    bagId: bagData.bagId,
-                    version: bagData.version,
-                    packer: bagData.packer,
-                    date: bagData.date
-                });
-
-                // Berechne SHA-256 Hash
-                const hashBytes = await sha256Hash(dataString);
-                const hashHex = bytesToHex(hashBytes);
-
-                // Erstelle OpenTimestamps DetachedTimestampFile
-                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
-                    new OpenTimestamps.Ops.OpSHA256(),
-                    hashBytes
-                );
-
-                // Sende an Calendar-Server für Timestamping
-                await OpenTimestamps.stamp(detached);
-
-                // Serialisiere den Timestamp
-                const otsBytes = detached.serializeToBytes();
-                const otsHex = bytesToHex(otsBytes);
-
-                return {
-                    hash: hashHex,
-                    otsData: otsHex,
-                    dataString: dataString,
-                    createdAt: new Date().toISOString(),
-                    status: 'pending', // pending = wartet auf Bitcoin-Block
-                    blockHeight: null,
-                    blockTime: null
-                };
-            } catch (error) {
-                console.error('Fehler beim Erstellen des Timestamps:', error);
-                return null;
-            }
-        }
-
-        // Timestamp verifizieren und Blockchain-Info holen
-        async function verifyTimestamp(timestampInfo) {
-            try {
-                const otsBytes = hexToBytes(timestampInfo.otsData);
-                const hashBytes = hexToBytes(timestampInfo.hash);
-
-                // Deserialisiere den Timestamp
-                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
-
-                // Erstelle das Original-Detached-File für Verifikation
-                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
-                    new OpenTimestamps.Ops.OpSHA256(),
-                    hashBytes
-                );
-
-                // Versuche zu verifizieren
-                const verifyResult = await OpenTimestamps.verify(detachedOts, detached);
-
-                if (verifyResult && Object.keys(verifyResult).length > 0) {
-                    // Timestamp ist verifiziert
-                    const attestations = Object.keys(verifyResult);
-                    const firstAttestation = attestations[0];
-                    const unixTime = verifyResult[firstAttestation];
-
-                    return {
-                        verified: true,
-                        blockHeight: firstAttestation,
-                        blockTime: new Date(unixTime * 1000).toISOString(),
-                        blockTimeFormatted: new Date(unixTime * 1000).toLocaleString('de-DE')
-                    };
+        // Close language menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('languageMenu');
+            const btn = e.target.closest('button');
+            if (!btn || !btn.onclick?.toString().includes('toggleLanguageMenu')) {
+                if (!e.target.closest('#languageMenu')) {
+                    menu.classList.add('hidden');
                 }
-
-                return { verified: false };
-            } catch (error) {
-                console.error('Fehler bei Timestamp-Verifizierung:', error);
-                return { verified: false };
             }
+        });
+
+        // ===========================================
+        // Suppliers Data
+        // ===========================================
+        const suppliers = [
+            { name: "ClavaStack", url: "https://clavastack.com/", logo: "assets/logos/clavastack.svg", region: "Europe, Germany" },
+            { name: "Pleb.Style", url: "https://pleb.style/", logo: "assets/logos/plebstyle.svg", region: "Europe, Germany" },
+            { name: "Bayoto", url: "https://bayoto.me/", logo: "assets/logos/bayoto.svg", region: "Europe" },
+            { name: "Cryptomaan", url: "https://cryptomaan.eu/collections/hardware-wallets", logo: "assets/logos/cryptomaan.svg", region: "Europe, Netherlands" },
+            { name: "BTC Direct", url: "https://shop.btcdirect.eu/", logo: "assets/logos/btcdirect.svg", region: "Europe, Netherlands" },
+            { name: "Dezentralshop", url: "https://dezentralshop.ch/", logo: "assets/logos/dezentralshop.svg", region: "Europe, Switzerland" },
+            { name: "LWallet", url: "https://lwallet.com.ua/en/", logo: "assets/logos/lwallet.svg", region: "Europe, Ukraine" },
+            { name: "Bitcoin Brabant", url: "https://bitcoinbrabant.com/", logo: "assets/logos/bitcoinbrabant.svg", region: "Europe, Netherlands" },
+            { name: "Bitsaga", url: "https://bitsaga.be/", logo: "assets/logos/bitsaga.svg", region: "Europe, Belgium" }
+        ];
+
+        function renderSuppliers() {
+            const grid = document.getElementById('suppliersGrid');
+            grid.innerHTML = suppliers.map(s => `
+                <a href="${s.url}" target="_blank" rel="noopener"
+                   class="bg-specter-dark border border-specter-border rounded-xl p-4 hover:border-specter-cyan transition card-hover flex flex-col items-center text-center">
+                    <div class="w-16 h-16 bg-specter-card rounded-lg flex items-center justify-center mb-3 overflow-hidden">
+                        <img src="${s.logo}" alt="${s.name}" class="w-12 h-12 object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-2xl font-bold text-specter-cyan\\'>${s.name.charAt(0)}</span>'">
+                    </div>
+                    <h3 class="font-semibold text-white mb-1">${s.name}</h3>
+                    <p class="text-xs text-specter-textMuted">${s.region}</p>
+                </a>
+            `).join('');
         }
 
-        // Timestamp upgraden (prüft ob nun in Blockchain)
-        async function upgradeTimestamp(timestampInfo) {
-            try {
-                const otsBytes = hexToBytes(timestampInfo.otsData);
-                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+        // ===========================================
+        // Proofs Data & Rendering
+        // ===========================================
+        let allProofs = [];
+        let currentTimestampData = null;
 
-                // Upgrade versuchen
-                const changed = await OpenTimestamps.upgrade(detachedOts);
-
-                if (changed) {
-                    // Serialisiere den aktualisierten Timestamp
-                    const newOtsBytes = detachedOts.serializeToBytes();
-                    return bytesToHex(newOtsBytes);
-                }
-
-                return null;
-            } catch (error) {
-                console.error('Fehler beim Timestamp-Upgrade:', error);
-                return null;
-            }
-        }
-
-        // Speichert Timestamps im localStorage
-        function saveTimestamps(timestamps) {
-            localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
-        }
-
-        // Lädt Timestamps aus localStorage
-        function loadTimestamps() {
+        function loadProofs() {
             const stored = localStorage.getItem('bag_timestamps');
-            return stored ? JSON.parse(stored) : {};
-        }
-
-        // =====================================================
-        // Haupt-Verifikationsprozess
-        // =====================================================
-
-        async function processVerification() {
-            if (!isAuthenticated) return;
-
-            const file = imageInput.files[0];
-            if (!file) return;
-
-            setProcessingState(true, 'Analysiere...');
-            resultsBody.innerHTML = '';
-            initialMessage.classList.add('hidden');
-            resultsTable.classList.add('hidden');
-            copyButton.classList.add('hidden');
-            sortControls.classList.add('hidden');
-
-            try {
-                const base64Data = await base64EncodeFile(file);
-
-                const payload = {
-                    mimeType: file.type,
-                    data: base64Data
-                };
-
-                const response = await fetch(PROXY_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Auth-Token': localStorage.getItem('auth_token')
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (response.status === 401) {
-                    alert('Fehler: Ihr Authentifizierungs-Token ist ungültig. Bitte überprüfen Sie die Eingabe und versuchen Sie es erneut.');
-                    localStorage.removeItem('auth_token');
-                    location.reload();
-                    return;
-                }
-
-                if (!response.ok) {
-                    const errorDetails = await response.json();
-                    alert(`API Fehler (${response.status}): ${errorDetails.error || 'Unbekannter Serverfehler.'}`);
-                    return;
-                }
-
-                const finalResult = await response.json();
-
-                // Datum (Upload-Zeitpunkt) hinzufügen
-                const uploadDate = new Date();
-                const resultsWithDate = finalResult.map(item => ({
-                    ...item,
-                    date: uploadDate.toISOString(),
-                    dateFormatted: uploadDate.toLocaleDateString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })
+            if (stored) {
+                const timestamps = JSON.parse(stored);
+                allProofs = Object.keys(timestamps).map(key => ({
+                    bagId: key.replace('bag_', ''),
+                    ...timestamps[key]
                 }));
-
-                // Timestamps erstellen
-                setProcessingState(true, 'Erstelle Blockchain-Timestamps...');
-                const timestamps = loadTimestamps();
-
-                for (const item of resultsWithDate) {
-                    const bagKey = `bag_${item.bagId}`;
-
-                    // Prüfe ob schon ein Timestamp existiert
-                    if (!timestamps[bagKey]) {
-                        const tsInfo = await createTimestamp(item);
-                        if (tsInfo) {
-                            timestamps[bagKey] = tsInfo;
-                            item.timestamp = tsInfo;
-                        }
-                    } else {
-                        // Existierender Timestamp - versuche zu upgraden/verifizieren
-                        const existing = timestamps[bagKey];
-
-                        // Versuche Upgrade falls noch pending
-                        if (existing.status === 'pending') {
-                            const upgradedOts = await upgradeTimestamp(existing);
-                            if (upgradedOts) {
-                                existing.otsData = upgradedOts;
-                            }
-
-                            // Versuche Verifizierung
-                            const verifyResult = await verifyTimestamp(existing);
-                            if (verifyResult.verified) {
-                                existing.status = 'verified';
-                                existing.blockHeight = verifyResult.blockHeight;
-                                existing.blockTime = verifyResult.blockTime;
-                                existing.blockTimeFormatted = verifyResult.blockTimeFormatted;
-                            }
-                        }
-
-                        item.timestamp = existing;
-                    }
-                }
-
-                saveTimestamps(timestamps);
-
-                currentResults = resultsWithDate;
-                displayResults(resultsWithDate, true);
-
-            } catch (error) {
-                console.error("Verifizierungsfehler:", error);
-                alert('Ein unerwarteter Fehler ist aufgetreten. Prüfen Sie die Konsole für Details.');
-            } finally {
-                setProcessingState(false);
             }
+            renderProofs();
         }
 
-        function sortResults(results) {
-            const sortValue = sortSelect.value;
-            const sorted = [...results];
+        function sortProofs(proofs) {
+            const sortValue = document.getElementById('sortSelect').value;
+            const sorted = [...proofs];
 
             switch (sortValue) {
                 case 'date-desc':
-                    sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
                     break;
                 case 'date-asc':
-                    sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    sorted.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
                     break;
                 case 'bagId-asc':
                     sorted.sort((a, b) => (a.bagId || '').localeCompare(b.bagId || '', undefined, {numeric: true}));
@@ -598,97 +476,93 @@
             return sorted;
         }
 
-        function displayResults(results, isNewUpload = true) {
-            resultsBody.innerHTML = '';
+        function renderProofs() {
+            const tbody = document.getElementById('proofsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const t = translations[currentLanguage];
 
-            if (!results || results.length === 0) {
-                initialMessage.textContent = 'Keine Bags auf dem Bild erkannt.';
-                initialMessage.classList.remove('hidden');
-                resultsTable.classList.add('hidden');
-                sortControls.classList.add('hidden');
+            if (allProofs.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
                 return;
             }
 
-            const sortedResults = sortResults(results);
+            emptyState.classList.add('hidden');
+            const sorted = sortProofs(allProofs);
 
-            sortedResults.forEach((item, index) => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
+            tbody.innerHTML = sorted.map((proof, index) => {
+                // Parse dataString to get version and packer
+                let version = 'Unknown', packer = 'Unknown', date = '---';
+                try {
+                    const data = JSON.parse(proof.dataString);
+                    version = data.version || 'Unknown';
+                    packer = data.packer || 'Unknown';
+                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
+                } catch (e) {}
 
-                // Verpacker als klickbaren Link wenn bekannt
-                let packerHtml;
-                if (item.packer && PACKERS[item.packer]) {
-                    packerHtml = `<button onclick="showPackerProfile('${item.packer}')" class="text-emerald-600 hover:text-emerald-800 font-semibold underline">${item.packer}</button>`;
+                // Proof badge
+                let proofBadge;
+                if (proof.status === 'verified') {
+                    proofBadge = `
+                        <button onclick="showTimestampModal(${index})"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-specter-success/20 text-specter-success rounded-full text-xs font-semibold hover:bg-specter-success/30 transition cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            ${t.timestamped} @${proof.blockHeight}
+                        </button>`;
                 } else {
-                    packerHtml = `<span class="text-gray-500">${item.packer || 'Unbekannt'}</span>`;
+                    proofBadge = `
+                        <button onclick="showTimestampModal(${index})"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-specter-warning/20 text-specter-warning rounded-full text-xs font-semibold hover:bg-specter-warning/30 transition cursor-pointer">
+                            <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            ${t.pending}
+                        </button>`;
                 }
 
-                // Timestamp-Proof Badge
-                let proofHtml;
-                if (item.timestamp) {
-                    if (item.timestamp.status === 'verified') {
-                        proofHtml = `
-                            <button onclick="showTimestampModal(${index})"
-                                class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold hover:bg-green-200 transition cursor-pointer">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Timestamped @${item.timestamp.blockHeight}
-                            </button>`;
-                    } else {
-                        proofHtml = `
-                            <button onclick="showTimestampModal(${index})"
-                                class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold hover:bg-yellow-200 transition cursor-pointer">
-                                <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Pending...
-                            </button>`;
-                    }
-                } else {
-                    proofHtml = `<span class="text-gray-400 text-xs">Kein Timestamp</span>`;
-                }
+                // Image button
+                const imageBtn = proof.imageData ? `
+                    <button onclick="showImageModal('${proof.imageData}')" class="text-specter-cyan hover:underline text-sm">
+                        ${t.viewImage}
+                    </button>
+                ` : '<span class="text-specter-textMuted text-sm">-</span>';
 
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.bagId || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${item.dateFormatted || '---'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.version || 'Unbekannt'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">${proofHtml}</td>
+                return `
+                    <tr class="hover:bg-specter-dark/50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${proof.bagId}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-textMuted">${date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${version}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-cyan">${packer}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${proofBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${imageBtn}</td>
+                    </tr>
                 `;
-                resultsBody.appendChild(row);
-            });
-
-            resultsTable.classList.remove('hidden');
-            resultsTableContainer.classList.remove('hidden');
-            copyButton.classList.remove('hidden');
-            sortControls.classList.remove('hidden');
-            sortControls.style.display = 'flex';
-            initialMessage.classList.add('hidden');
+            }).join('');
         }
 
-        // =====================================================
-        // Timestamp Modal Funktionen
-        // =====================================================
+        document.getElementById('sortSelect').addEventListener('change', renderProofs);
 
+        // ===========================================
+        // Modals
+        // ===========================================
         function showTimestampModal(index) {
-            const item = currentResults[index];
-            if (!item || !item.timestamp) return;
+            const proof = sortProofs(allProofs)[index];
+            if (!proof) return;
 
-            currentTimestampData = { item, index };
+            currentTimestampData = proof;
 
-            // Modal-Inhalte setzen
-            document.getElementById('tsModalBagId').textContent = item.bagId || 'N/A';
-            document.getElementById('tsModalHash').textContent = item.timestamp.hash;
-            document.getElementById('tsModalCreated').textContent = new Date(item.timestamp.createdAt).toLocaleString('de-DE');
+            document.getElementById('tsModalBagId').textContent = proof.bagId;
+            document.getElementById('tsModalHash').textContent = proof.hash;
+            document.getElementById('tsModalCreated').textContent = new Date(proof.createdAt).toLocaleString(currentLanguage === 'de' ? 'de-DE' : 'en-US');
 
-            // Status-Anzeige
             const verifiedDiv = document.getElementById('timestampVerified');
             const pendingDiv = document.getElementById('timestampPending');
             const blockHeightRow = document.getElementById('tsBlockHeightRow');
             const blockTimeRow = document.getElementById('tsBlockTimeRow');
 
-            if (item.timestamp.status === 'verified') {
+            if (proof.status === 'verified') {
                 verifiedDiv.classList.remove('hidden');
                 pendingDiv.classList.add('hidden');
                 blockHeightRow.classList.remove('hidden');
@@ -696,11 +570,9 @@
                 blockTimeRow.classList.remove('hidden');
                 blockTimeRow.style.display = 'flex';
 
-                const blockHeightLink = document.getElementById('tsModalBlockHeight');
-                blockHeightLink.textContent = `#${item.timestamp.blockHeight}`;
-                blockHeightLink.href = `https://mempool.space/block/${item.timestamp.blockHeight}`;
-
-                document.getElementById('tsModalBlockTime').textContent = item.timestamp.blockTimeFormatted;
+                document.getElementById('tsModalBlockHeight').textContent = `#${proof.blockHeight}`;
+                document.getElementById('tsModalBlockHeight').href = `https://mempool.space/block/${proof.blockHeight}`;
+                document.getElementById('tsModalBlockTime').textContent = proof.blockTimeFormatted;
             } else {
                 verifiedDiv.classList.add('hidden');
                 pendingDiv.classList.remove('hidden');
@@ -710,123 +582,101 @@
                 blockTimeRow.style.display = 'none';
             }
 
-            timestampModal.classList.remove('hidden');
-            timestampModal.style.display = 'flex';
+            document.getElementById('timestampModal').classList.remove('hidden');
+            document.getElementById('timestampModal').style.display = 'flex';
         }
 
         function closeTimestampModal() {
-            timestampModal.classList.add('hidden');
-            timestampModal.style.display = 'none';
+            document.getElementById('timestampModal').classList.add('hidden');
+            document.getElementById('timestampModal').style.display = 'none';
             currentTimestampData = null;
         }
 
-        // Modal schließen bei Klick außerhalb
-        timestampModal.addEventListener('click', (e) => {
-            if (e.target === timestampModal) {
-                closeTimestampModal();
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
             }
-        });
+            return bytes;
+        }
 
-        // .ots Datei herunterladen
         function downloadOtsFile() {
-            if (!currentTimestampData || !currentTimestampData.item.timestamp) return;
-
-            const ts = currentTimestampData.item.timestamp;
-            const bagId = currentTimestampData.item.bagId;
-
-            // Konvertiere Hex zu Bytes
-            const otsBytes = hexToBytes(ts.otsData);
-
-            // Erstelle Blob und Download
+            if (!currentTimestampData) return;
+            const otsBytes = hexToBytes(currentTimestampData.otsData);
             const blob = new Blob([otsBytes], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bag_${bagId}_timestamp.ots`;
+            a.download = `bag_${currentTimestampData.bagId}_timestamp.ots`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // Externe Verifizierung öffnen
         function verifyExternal() {
             window.open('https://opentimestamps.org/', '_blank');
         }
 
-        // =====================================================
-        // Verpacker Modal Funktionen
-        // =====================================================
-
-        function showPackerProfile(packerName) {
-            const packer = PACKERS[packerName];
-            if (!packer) return;
-
-            document.getElementById('packerName').textContent = packer.name;
-            document.getElementById('packerDescription').textContent = packer.description;
-            document.getElementById('packerTwitter').href = packer.twitter;
-
-            packerModal.classList.remove('hidden');
-            packerModal.style.display = 'flex';
+        function showImageModal(imageData) {
+            document.getElementById('modalImage').src = imageData;
+            document.getElementById('downloadImageBtn').href = imageData;
+            document.getElementById('imageModal').classList.remove('hidden');
+            document.getElementById('imageModal').style.display = 'flex';
         }
 
-        function closePackerModal() {
-            packerModal.classList.add('hidden');
-            packerModal.style.display = 'none';
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.add('hidden');
+            document.getElementById('imageModal').style.display = 'none';
         }
 
-        // Modal schließen bei Klick außerhalb
-        packerModal.addEventListener('click', (e) => {
-            if (e.target === packerModal) {
-                closePackerModal();
-            }
+        // Close modals on backdrop click
+        document.getElementById('timestampModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('timestampModal')) closeTimestampModal();
+        });
+        document.getElementById('imageModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('imageModal')) closeImageModal();
         });
 
-        // =====================================================
-        // Export-Funktion
-        // =====================================================
+        // ===========================================
+        // CSV Export
+        // ===========================================
+        function exportCSV() {
+            const t = translations[currentLanguage];
+            let csv = `${t.colBagId},${t.colDate},${t.colVersion},${t.colPacker},${t.colProof},Hash\n`;
 
-        function copyTableContent() {
-            let csv = "Bag ID\tDatum\tVersion\tVerpacker\tTimestamp Status\n";
-
-            currentResults.forEach(item => {
-                let tsStatus = 'Kein Timestamp';
-                if (item.timestamp) {
-                    tsStatus = item.timestamp.status === 'verified'
-                        ? `Verifiziert @Block ${item.timestamp.blockHeight}`
-                        : 'Pending';
-                }
-                csv += `${item.bagId || 'N/A'}\t${item.dateFormatted || '---'}\t${item.version || 'Unbekannt'}\t${item.packer || 'Unbekannt'}\t${tsStatus}\n`;
-            });
-
-            navigator.clipboard.writeText(csv).then(() => {
-                copyButton.textContent = 'Kopiert!';
-                setTimeout(() => {
-                    copyButton.textContent = 'Ergebnisse kopieren';
-                }, 2000);
-            }).catch(() => {
-                // Fallback für ältere Browser
-                const tempTextArea = document.createElement("textarea");
-                tempTextArea.value = csv;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
+            allProofs.forEach(proof => {
+                let version = '', packer = '', date = '';
                 try {
-                    document.execCommand('copy');
-                    copyButton.textContent = 'Kopiert!';
-                    setTimeout(() => {
-                        copyButton.textContent = 'Ergebnisse kopieren';
-                    }, 2000);
-                } catch (err) {
-                    alert('Kopieren fehlgeschlagen.');
-                } finally {
-                    document.body.removeChild(tempTextArea);
-                }
+                    const data = JSON.parse(proof.dataString);
+                    version = data.version || '';
+                    packer = data.packer || '';
+                    date = data.date || '';
+                } catch (e) {}
+
+                const status = proof.status === 'verified' ? `Verified @${proof.blockHeight}` : 'Pending';
+                csv += `"${proof.bagId}","${date}","${version}","${packer}","${status}","${proof.hash}"\n`;
             });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `clavastack_proofs_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        // Initiale Prüfung beim Laden
-        checkAuthentication();
-
+        // ===========================================
+        // Initialize
+        // ===========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            updateLanguage();
+            renderSuppliers();
+            loadProofs();
+        });
     </script>
 </body>
 </html>

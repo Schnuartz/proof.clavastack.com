@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Proof - ClavaStack</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://opentimestamps.org/assets/javascripts/vendor/opentimestamps.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        specter: {
+                            dark: '#0a0e17',
+                            darker: '#060810',
+                            card: '#111827',
+                            border: '#1f2937',
+                            cyan: '#00d4ff',
+                            cyanDark: '#0891b2',
+                            text: '#e5e7eb',
+                            textMuted: '#9ca3af',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            error: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(180deg, #0a0e17 0%, #060810 100%);
+            min-height: 100vh;
+        }
+        .file-upload-label {
+            display: block;
+            cursor: pointer;
+            padding: 2rem;
+            border: 2px dashed #1f2937;
+            border-radius: 1rem;
+            background-color: #111827;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .file-upload-label:hover {
+            border-color: #00d4ff;
+            background-color: rgba(0, 212, 255, 0.05);
+        }
+        .file-upload-label.active {
+            border-color: #00d4ff;
+            background-color: rgba(0, 212, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="text-specter-text">
+    <!-- Header -->
+    <header class="border-b border-specter-border bg-specter-darker/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center gap-3">
+                    <img src="../assets/logo.png" alt="ClavaStack" class="h-10 w-auto" onerror="this.style.display='none'">
+                    <span class="text-xl font-bold">ClavaStack <span class="text-specter-cyan">Proof</span></span>
+                </a>
+                <div class="flex items-center gap-4">
+                    <!-- Language Switcher -->
+                    <div class="relative">
+                        <button onclick="toggleLanguageMenu()" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-specter-card border border-specter-border hover:border-specter-cyan transition">
+                            <img id="currentFlag" src="../assets/flags/en.svg" alt="EN" class="w-5 h-4 rounded-sm object-cover">
+                            <span id="currentLang" class="text-sm font-medium">EN</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="languageMenu" class="hidden absolute right-0 mt-2 w-40 bg-specter-card border border-specter-border rounded-lg shadow-xl overflow-hidden">
+                            <button onclick="setLanguage('en')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-specter-border transition text-left">
+                                <img src="../assets/flags/en.svg" alt="EN" class="w-5 h-4 rounded-sm object-cover">
+                                <span>English</span>
+                            </button>
+                            <button onclick="setLanguage('de')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-specter-border transition text-left">
+                                <img src="../assets/flags/de.svg" alt="DE" class="w-5 h-4 rounded-sm object-cover">
+                                <span>Deutsch</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Back Button -->
+                    <a href="/" class="px-4 py-2 bg-specter-card border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        <span data-i18n="backToList">Back to List</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Security Warning -->
+        <div id="security-warning" class="bg-specter-error/10 border border-specter-error/30 text-specter-error px-6 py-4 rounded-xl mb-8 hidden">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p data-i18n="securityWarning">Please enter the authentication token to enable secure proxy access.</p>
+            </div>
+        </div>
+
+        <!-- Authentication -->
+        <div class="bg-specter-card border border-specter-border rounded-2xl p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4" data-i18n="authTitle">1. Authentication</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="password" id="authTokenInput"
+                       class="flex-grow p-4 bg-specter-dark border border-specter-border rounded-xl focus:border-specter-cyan focus:outline-none transition"
+                       data-placeholder-i18n="authPlaceholder">
+                <button id="authButton"
+                        class="px-6 py-4 bg-specter-cyan text-specter-darker font-bold rounded-xl hover:bg-specter-cyanDark transition whitespace-nowrap"
+                        data-i18n="authButton">
+                    Save Token
+                </button>
+            </div>
+        </div>
+
+        <!-- Upload and Verification -->
+        <div id="verification-area" class="bg-specter-card border border-specter-border rounded-2xl p-6 opacity-30 pointer-events-none transition duration-500">
+            <h2 class="text-xl font-bold mb-4" data-i18n="uploadTitle">2. Image Upload & Analysis</h2>
+
+            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="displayFileName(this)">
+            <label for="imageInput" id="fileLabel" class="file-upload-label">
+                <svg class="w-12 h-12 mx-auto text-specter-cyan mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                <span class="font-semibold text-specter-text block mb-2" data-i18n="uploadLabel">Select image file</span>
+                <p id="fileNameDisplay" class="text-sm text-specter-textMuted"></p>
+            </label>
+
+            <!-- Image Preview -->
+            <div id="imagePreview" class="hidden mt-4">
+                <img id="previewImage" src="" alt="Preview" class="max-h-64 mx-auto rounded-xl">
+            </div>
+
+            <button id="verifyButton" disabled
+                    class="w-full mt-6 px-6 py-4 bg-specter-cyan text-specter-darker font-bold rounded-xl hover:bg-specter-cyanDark transition disabled:bg-specter-border disabled:text-specter-textMuted disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <span id="buttonText" data-i18n="verifyButton">Analyze Bags</span>
+                <svg id="loadingSpinner" class="animate-spin h-5 w-5 hidden" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Results -->
+        <div class="mt-8 bg-specter-card border border-specter-border rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-specter-border flex justify-between items-center">
+                <h2 class="text-xl font-bold" data-i18n="resultsTitle">3. Analysis Results</h2>
+                <div id="sortControls" class="hidden">
+                    <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
+                        <option value="date-desc" data-i18n="sortNewest">Newest first</option>
+                        <option value="date-asc" data-i18n="sortOldest">Oldest first</option>
+                        <option value="bagId-asc" data-i18n="sortBagIdAsc">Bag ID (asc)</option>
+                        <option value="bagId-desc" data-i18n="sortBagIdDesc">Bag ID (desc)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="resultsTableContainer" class="overflow-x-auto">
+                <table class="w-full hidden" id="resultsTable">
+                    <thead class="bg-specter-darker">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colBagId">Bag ID</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colDate">Date</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colVersion">Version</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colPacker">Packer</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colProof">Blockchain Proof</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody" class="divide-y divide-specter-border">
+                    </tbody>
+                </table>
+                <p id="initialMessage" class="text-specter-textMuted text-center py-8" data-i18n="initialMessage">Upload an image and analyze it to see results.</p>
+            </div>
+
+            <div class="p-6 border-t border-specter-border">
+                <button id="copyButton" class="hidden px-4 py-2 bg-specter-dark border border-specter-border rounded-lg hover:border-specter-cyan transition" onclick="copyTableContent()">
+                    <span data-i18n="copyResults">Copy Results</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Timestamp Modal -->
+    <div id="timestampModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-lg mx-4 p-6 w-full">
+            <div class="flex justify-between items-start mb-6">
+                <h3 class="text-xl font-bold" data-i18n="modalTitle">Blockchain Timestamp Proof</h3>
+                <button onclick="closeTimestampModal()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div id="timestampVerified" class="hidden mb-6 p-4 bg-specter-success/10 border border-specter-success/30 rounded-xl">
+                <div class="flex items-center gap-2 text-specter-success font-semibold mb-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span data-i18n="verifiedTitle">Verified on Bitcoin Blockchain</span>
+                </div>
+                <p class="text-sm text-specter-success/80" data-i18n="verifiedDescription">This record was provably created before the stated time.</p>
+            </div>
+
+            <div id="timestampPending" class="hidden mb-6 p-4 bg-specter-warning/10 border border-specter-warning/30 rounded-xl">
+                <div class="flex items-center gap-2 text-specter-warning font-semibold mb-2">
+                    <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span data-i18n="pendingTitle">Awaiting Bitcoin Blockchain</span>
+                </div>
+                <p class="text-sm text-specter-warning/80" data-i18n="pendingDescription">Timestamp sent to calendar servers, waiting for Bitcoin block confirmation (few hours).</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBagId">Bag ID:</span>
+                    <span id="tsModalBagId" class="font-mono text-white"></span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalHash">SHA-256 Hash:</span>
+                    <span id="tsModalHash" class="font-mono text-xs text-white break-all max-w-[200px]"></span>
+                </div>
+                <div id="tsBlockHeightRow" class="hidden flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBlock">Bitcoin Block:</span>
+                    <a id="tsModalBlockHeight" href="#" target="_blank" class="font-mono text-specter-cyan hover:underline"></a>
+                </div>
+                <div id="tsBlockTimeRow" class="hidden flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalBlockTime">Block Time:</span>
+                    <span id="tsModalBlockTime" class="text-white"></span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b border-specter-border">
+                    <span class="text-specter-textMuted text-sm" data-i18n="modalCreated">Created:</span>
+                    <span id="tsModalCreated" class="text-white"></span>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button onclick="downloadOtsFile()" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span data-i18n="downloadOts">Download .ots</span>
+                </button>
+                <button onclick="verifyExternal()" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                    <span data-i18n="verifyExternal">Verify Externally</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packer Modal -->
+    <div id="packerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-md mx-4 p-6">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="packerName" class="text-2xl font-bold text-white"></h3>
+                <button onclick="closePackerModal()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
+            </div>
+            <p id="packerDescription" class="text-specter-textMuted mb-4"></p>
+            <a id="packerTwitter" href="#" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg hover:bg-specter-text transition">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X/Twitter
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const PROXY_API_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app/api/verify-serial-number";
+
+        const PACKERS = {
+            "Schnuartz": {
+                name: "Schnuartz",
+                description: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
+                twitter: "https://x.com/schnuartz"
+            }
+        };
+
+        // i18n
+        const translations = {
+            en: {
+                backToList: "Back to List",
+                securityWarning: "Please enter the authentication token to enable secure proxy access.",
+                authTitle: "1. Authentication",
+                authPlaceholder: "Secret authentication token",
+                authButton: "Save Token",
+                tokenSaved: "Token Saved",
+                uploadTitle: "2. Image Upload & Analysis",
+                uploadLabel: "Select image file",
+                verifyButton: "Analyze Bags",
+                analyzing: "Analyzing...",
+                timestamping: "Creating Blockchain Timestamps...",
+                resultsTitle: "3. Analysis Results",
+                sortNewest: "Newest first",
+                sortOldest: "Oldest first",
+                sortBagIdAsc: "Bag ID (asc)",
+                sortBagIdDesc: "Bag ID (desc)",
+                colBagId: "Bag ID",
+                colDate: "Date",
+                colVersion: "Version",
+                colPacker: "Packer",
+                colProof: "Blockchain Proof",
+                initialMessage: "Upload an image and analyze it to see results.",
+                copyResults: "Copy Results",
+                copied: "Copied!",
+                noBags: "No bags detected on the image.",
+                modalTitle: "Blockchain Timestamp Proof",
+                verifiedTitle: "Verified on Bitcoin Blockchain",
+                verifiedDescription: "This record was provably created before the stated time.",
+                pendingTitle: "Awaiting Bitcoin Blockchain",
+                pendingDescription: "Timestamp sent to calendar servers, waiting for Bitcoin block confirmation (few hours).",
+                modalBagId: "Bag ID:",
+                modalHash: "SHA-256 Hash:",
+                modalBlock: "Bitcoin Block:",
+                modalBlockTime: "Block Time:",
+                modalCreated: "Created:",
+                downloadOts: "Download .ots",
+                verifyExternal: "Verify Externally",
+                timestamped: "Timestamped",
+                pending: "Pending..."
+            },
+            de: {
+                backToList: "Zuruck zur Liste",
+                securityWarning: "Bitte geben Sie das Authentifizierungs-Token ein, um den sicheren Proxy-Zugriff zu aktivieren.",
+                authTitle: "1. Authentifizierung",
+                authPlaceholder: "Geheimes Authentifizierungs-Token",
+                authButton: "Token speichern",
+                tokenSaved: "Token gespeichert",
+                uploadTitle: "2. Bild-Upload & Analyse",
+                uploadLabel: "Bilddatei auswahlen",
+                verifyButton: "Bags analysieren",
+                analyzing: "Analysiere...",
+                timestamping: "Erstelle Blockchain-Timestamps...",
+                resultsTitle: "3. Analyse-Ergebnisse",
+                sortNewest: "Neueste zuerst",
+                sortOldest: "Alteste zuerst",
+                sortBagIdAsc: "Bag ID (aufsteigend)",
+                sortBagIdDesc: "Bag ID (absteigend)",
+                colBagId: "Bag ID",
+                colDate: "Datum",
+                colVersion: "Version",
+                colPacker: "Verpacker",
+                colProof: "Blockchain Nachweis",
+                initialMessage: "Laden Sie ein Bild hoch und analysieren Sie es, um Ergebnisse zu sehen.",
+                copyResults: "Ergebnisse kopieren",
+                copied: "Kopiert!",
+                noBags: "Keine Bags auf dem Bild erkannt.",
+                modalTitle: "Blockchain Zeitstempel-Nachweis",
+                verifiedTitle: "Verifiziert auf der Bitcoin Blockchain",
+                verifiedDescription: "Dieser Datensatz wurde nachweislich vor dem angegebenen Zeitpunkt erstellt.",
+                pendingTitle: "Warte auf Bitcoin Blockchain",
+                pendingDescription: "Zeitstempel an Calendar-Server gesendet, warte auf Bitcoin-Block-Bestatigung (einige Stunden).",
+                modalBagId: "Bag ID:",
+                modalHash: "SHA-256 Hash:",
+                modalBlock: "Bitcoin Block:",
+                modalBlockTime: "Block-Zeit:",
+                modalCreated: "Erstellt am:",
+                downloadOts: ".ots herunterladen",
+                verifyExternal: "Extern verifizieren",
+                timestamped: "Zeitgestempelt",
+                pending: "Ausstehend..."
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('language') || 'en';
+        let isAuthenticated = false;
+        let currentResults = [];
+        let currentTimestampData = null;
+        let currentImageData = null;
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            updateLanguage();
+            toggleLanguageMenu();
+        }
+
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.textContent = t[key];
+            });
+            document.querySelectorAll('[data-placeholder-i18n]').forEach(el => {
+                const key = el.getAttribute('data-placeholder-i18n');
+                if (t[key]) el.placeholder = t[key];
+            });
+            document.getElementById('currentLang').textContent = currentLanguage.toUpperCase();
+            document.getElementById('currentFlag').src = `../assets/flags/${currentLanguage}.svg`;
+            if (currentResults.length > 0) displayResults(currentResults, false);
+        }
+
+        function toggleLanguageMenu() {
+            document.getElementById('languageMenu').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('languageMenu');
+            if (!e.target.closest('button') || !e.target.closest('button').onclick?.toString().includes('toggleLanguageMenu')) {
+                if (!e.target.closest('#languageMenu')) menu.classList.add('hidden');
+            }
+        });
+
+        // Auth
+        const authButton = document.getElementById('authButton');
+        const authTokenInput = document.getElementById('authTokenInput');
+        const securityWarning = document.getElementById('security-warning');
+        const verificationArea = document.getElementById('verification-area');
+        const imageInput = document.getElementById('imageInput');
+        const verifyButton = document.getElementById('verifyButton');
+
+        const storedToken = localStorage.getItem('auth_token');
+        if (storedToken) {
+            authTokenInput.value = storedToken;
+            checkAuthentication();
+        } else {
+            securityWarning.classList.remove('hidden');
+        }
+
+        authButton.addEventListener('click', () => {
+            const token = authTokenInput.value.trim();
+            if (token) {
+                localStorage.setItem('auth_token', token);
+                checkAuthentication();
+            }
+        });
+
+        function checkAuthentication() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                isAuthenticated = true;
+                verificationArea.classList.remove('opacity-30', 'pointer-events-none');
+                securityWarning.classList.add('hidden');
+                authButton.textContent = translations[currentLanguage].tokenSaved;
+                authButton.disabled = true;
+                authTokenInput.disabled = true;
+                verifyButton.disabled = !imageInput.files.length;
+            }
+        }
+
+        imageInput.addEventListener('change', () => {
+            verifyButton.disabled = !isAuthenticated || !imageInput.files.length;
+        });
+
+        function displayFileName(input) {
+            const display = document.getElementById('fileNameDisplay');
+            const fileLabel = document.getElementById('fileLabel');
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImage');
+
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                display.textContent = `Selected: ${file.name}`;
+                fileLabel.classList.add('active');
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    currentImageData = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                display.textContent = '';
+                fileLabel.classList.remove('active');
+                preview.classList.add('hidden');
+                currentImageData = null;
+            }
+        }
+
+        function setProcessingState(isProcessing, statusKey = 'analyzing') {
+            const t = translations[currentLanguage];
+            verifyButton.disabled = isProcessing || !isAuthenticated || !imageInput.files.length;
+            verificationArea.classList.toggle('pointer-events-none', isProcessing);
+            document.getElementById('buttonText').textContent = isProcessing ? t[statusKey] : t.verifyButton;
+            document.getElementById('loadingSpinner').classList.toggle('hidden', !isProcessing);
+        }
+
+        function base64EncodeFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // OpenTimestamps functions
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        async function sha256Hash(data) {
+            const encoder = new TextEncoder();
+            const dataBuffer = encoder.encode(data);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+            return new Uint8Array(hashBuffer);
+        }
+
+        async function createTimestamp(bagData, imageData) {
+            try {
+                const dataString = JSON.stringify({
+                    bagId: bagData.bagId,
+                    version: bagData.version,
+                    packer: bagData.packer,
+                    date: bagData.date
+                });
+
+                const hashBytes = await sha256Hash(dataString);
+                const hashHex = bytesToHex(hashBytes);
+
+                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+                    new OpenTimestamps.Ops.OpSHA256(),
+                    hashBytes
+                );
+
+                await OpenTimestamps.stamp(detached);
+                const otsBytes = detached.serializeToBytes();
+                const otsHex = bytesToHex(otsBytes);
+
+                return {
+                    hash: hashHex,
+                    otsData: otsHex,
+                    dataString: dataString,
+                    createdAt: new Date().toISOString(),
+                    status: 'pending',
+                    blockHeight: null,
+                    blockTime: null,
+                    imageData: imageData
+                };
+            } catch (error) {
+                console.error('Timestamp error:', error);
+                return null;
+            }
+        }
+
+        async function verifyTimestamp(timestampInfo) {
+            try {
+                const otsBytes = hexToBytes(timestampInfo.otsData);
+                const hashBytes = hexToBytes(timestampInfo.hash);
+                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+                    new OpenTimestamps.Ops.OpSHA256(),
+                    hashBytes
+                );
+                const verifyResult = await OpenTimestamps.verify(detachedOts, detached);
+
+                if (verifyResult && Object.keys(verifyResult).length > 0) {
+                    const attestations = Object.keys(verifyResult);
+                    const firstAttestation = attestations[0];
+                    const unixTime = verifyResult[firstAttestation];
+
+                    return {
+                        verified: true,
+                        blockHeight: firstAttestation,
+                        blockTime: new Date(unixTime * 1000).toISOString(),
+                        blockTimeFormatted: new Date(unixTime * 1000).toLocaleString(currentLanguage === 'de' ? 'de-DE' : 'en-US')
+                    };
+                }
+                return { verified: false };
+            } catch (error) {
+                console.error('Verification error:', error);
+                return { verified: false };
+            }
+        }
+
+        async function upgradeTimestamp(timestampInfo) {
+            try {
+                const otsBytes = hexToBytes(timestampInfo.otsData);
+                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+                const changed = await OpenTimestamps.upgrade(detachedOts);
+                if (changed) {
+                    return bytesToHex(detachedOts.serializeToBytes());
+                }
+                return null;
+            } catch (error) {
+                console.error('Upgrade error:', error);
+                return null;
+            }
+        }
+
+        function saveTimestamps(timestamps) {
+            localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+        }
+
+        function loadTimestamps() {
+            const stored = localStorage.getItem('bag_timestamps');
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        // Verification
+        verifyButton.addEventListener('click', processVerification);
+
+        async function processVerification() {
+            if (!isAuthenticated) return;
+
+            const file = imageInput.files[0];
+            if (!file) return;
+
+            setProcessingState(true, 'analyzing');
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('initialMessage').classList.add('hidden');
+            document.getElementById('resultsTable').classList.add('hidden');
+            document.getElementById('copyButton').classList.add('hidden');
+            document.getElementById('sortControls').classList.add('hidden');
+
+            try {
+                const base64Data = await base64EncodeFile(file);
+
+                const response = await fetch(PROXY_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Auth-Token': localStorage.getItem('auth_token')
+                    },
+                    body: JSON.stringify({ mimeType: file.type, data: base64Data })
+                });
+
+                if (response.status === 401) {
+                    alert('Invalid authentication token.');
+                    localStorage.removeItem('auth_token');
+                    location.reload();
+                    return;
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`API Error: ${error.error || 'Unknown error'}`);
+                    return;
+                }
+
+                const finalResult = await response.json();
+
+                const uploadDate = new Date();
+                const resultsWithDate = finalResult.map(item => ({
+                    ...item,
+                    date: uploadDate.toISOString(),
+                    dateFormatted: uploadDate.toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })
+                }));
+
+                setProcessingState(true, 'timestamping');
+                const timestamps = loadTimestamps();
+
+                for (const item of resultsWithDate) {
+                    const bagKey = `bag_${item.bagId}`;
+
+                    if (!timestamps[bagKey]) {
+                        const tsInfo = await createTimestamp(item, currentImageData);
+                        if (tsInfo) {
+                            timestamps[bagKey] = tsInfo;
+                            item.timestamp = tsInfo;
+                        }
+                    } else {
+                        const existing = timestamps[bagKey];
+
+                        // Update image if not exists
+                        if (!existing.imageData && currentImageData) {
+                            existing.imageData = currentImageData;
+                        }
+
+                        if (existing.status === 'pending') {
+                            const upgradedOts = await upgradeTimestamp(existing);
+                            if (upgradedOts) existing.otsData = upgradedOts;
+
+                            const verifyResult = await verifyTimestamp(existing);
+                            if (verifyResult.verified) {
+                                existing.status = 'verified';
+                                existing.blockHeight = verifyResult.blockHeight;
+                                existing.blockTime = verifyResult.blockTime;
+                                existing.blockTimeFormatted = verifyResult.blockTimeFormatted;
+                            }
+                        }
+                        item.timestamp = existing;
+                    }
+                }
+
+                saveTimestamps(timestamps);
+                currentResults = resultsWithDate;
+                displayResults(resultsWithDate, true);
+
+            } catch (error) {
+                console.error("Verification error:", error);
+                alert('An error occurred. Check console for details.');
+            } finally {
+                setProcessingState(false);
+            }
+        }
+
+        function sortResults(results) {
+            const sortValue = document.getElementById('sortSelect').value;
+            const sorted = [...results];
+
+            switch (sortValue) {
+                case 'date-desc': sorted.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
+                case 'date-asc': sorted.sort((a, b) => new Date(a.date) - new Date(b.date)); break;
+                case 'bagId-asc': sorted.sort((a, b) => (a.bagId || '').localeCompare(b.bagId || '', undefined, {numeric: true})); break;
+                case 'bagId-desc': sorted.sort((a, b) => (b.bagId || '').localeCompare(a.bagId || '', undefined, {numeric: true})); break;
+            }
+            return sorted;
+        }
+
+        document.getElementById('sortSelect').addEventListener('change', () => {
+            if (currentResults.length > 0) displayResults(currentResults, false);
+        });
+
+        function displayResults(results) {
+            const tbody = document.getElementById('resultsBody');
+            const t = translations[currentLanguage];
+            tbody.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                document.getElementById('initialMessage').textContent = t.noBags;
+                document.getElementById('initialMessage').classList.remove('hidden');
+                document.getElementById('resultsTable').classList.add('hidden');
+                document.getElementById('sortControls').classList.add('hidden');
+                return;
+            }
+
+            const sorted = sortResults(results);
+
+            sorted.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-specter-dark/50 transition';
+
+                let packerHtml = PACKERS[item.packer]
+                    ? `<button onclick="showPackerProfile('${item.packer}')" class="text-specter-cyan hover:underline font-semibold">${item.packer}</button>`
+                    : `<span class="text-specter-textMuted">${item.packer || 'Unknown'}</span>`;
+
+                let proofHtml;
+                if (item.timestamp) {
+                    if (item.timestamp.status === 'verified') {
+                        proofHtml = `<button onclick="showTimestampModal(${index})" class="inline-flex items-center gap-1 px-3 py-1.5 bg-specter-success/20 text-specter-success rounded-full text-xs font-semibold hover:bg-specter-success/30 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            ${t.timestamped} @${item.timestamp.blockHeight}
+                        </button>`;
+                    } else {
+                        proofHtml = `<button onclick="showTimestampModal(${index})" class="inline-flex items-center gap-1 px-3 py-1.5 bg-specter-warning/20 text-specter-warning rounded-full text-xs font-semibold hover:bg-specter-warning/30 transition">
+                            <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            ${t.pending}
+                        </button>`;
+                    }
+                } else {
+                    proofHtml = '<span class="text-specter-textMuted text-xs">-</span>';
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${item.bagId || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-textMuted">${item.dateFormatted || '---'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${item.version || 'Unknown'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${proofHtml}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('resultsTable').classList.remove('hidden');
+            document.getElementById('copyButton').classList.remove('hidden');
+            document.getElementById('sortControls').classList.remove('hidden');
+            document.getElementById('initialMessage').classList.add('hidden');
+        }
+
+        // Modals
+        function showTimestampModal(index) {
+            const item = sortResults(currentResults)[index];
+            if (!item || !item.timestamp) return;
+
+            currentTimestampData = { item, index };
+
+            document.getElementById('tsModalBagId').textContent = item.bagId || 'N/A';
+            document.getElementById('tsModalHash').textContent = item.timestamp.hash;
+            document.getElementById('tsModalCreated').textContent = new Date(item.timestamp.createdAt).toLocaleString(currentLanguage === 'de' ? 'de-DE' : 'en-US');
+
+            const verifiedDiv = document.getElementById('timestampVerified');
+            const pendingDiv = document.getElementById('timestampPending');
+            const blockHeightRow = document.getElementById('tsBlockHeightRow');
+            const blockTimeRow = document.getElementById('tsBlockTimeRow');
+
+            if (item.timestamp.status === 'verified') {
+                verifiedDiv.classList.remove('hidden');
+                pendingDiv.classList.add('hidden');
+                blockHeightRow.classList.remove('hidden');
+                blockHeightRow.style.display = 'flex';
+                blockTimeRow.classList.remove('hidden');
+                blockTimeRow.style.display = 'flex';
+                document.getElementById('tsModalBlockHeight').textContent = `#${item.timestamp.blockHeight}`;
+                document.getElementById('tsModalBlockHeight').href = `https://mempool.space/block/${item.timestamp.blockHeight}`;
+                document.getElementById('tsModalBlockTime').textContent = item.timestamp.blockTimeFormatted;
+            } else {
+                verifiedDiv.classList.add('hidden');
+                pendingDiv.classList.remove('hidden');
+                blockHeightRow.style.display = 'none';
+                blockTimeRow.style.display = 'none';
+            }
+
+            document.getElementById('timestampModal').classList.remove('hidden');
+            document.getElementById('timestampModal').style.display = 'flex';
+        }
+
+        function closeTimestampModal() {
+            document.getElementById('timestampModal').classList.add('hidden');
+            document.getElementById('timestampModal').style.display = 'none';
+            currentTimestampData = null;
+        }
+
+        document.getElementById('timestampModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('timestampModal')) closeTimestampModal();
+        });
+
+        function downloadOtsFile() {
+            if (!currentTimestampData) return;
+            const ts = currentTimestampData.item.timestamp;
+            const otsBytes = hexToBytes(ts.otsData);
+            const blob = new Blob([otsBytes], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bag_${currentTimestampData.item.bagId}_timestamp.ots`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function verifyExternal() {
+            window.open('https://opentimestamps.org/', '_blank');
+        }
+
+        function showPackerProfile(packerName) {
+            const packer = PACKERS[packerName];
+            if (!packer) return;
+            document.getElementById('packerName').textContent = packer.name;
+            document.getElementById('packerDescription').textContent = packer.description;
+            document.getElementById('packerTwitter').href = packer.twitter;
+            document.getElementById('packerModal').classList.remove('hidden');
+            document.getElementById('packerModal').style.display = 'flex';
+        }
+
+        function closePackerModal() {
+            document.getElementById('packerModal').classList.add('hidden');
+            document.getElementById('packerModal').style.display = 'none';
+        }
+
+        document.getElementById('packerModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('packerModal')) closePackerModal();
+        });
+
+        function copyTableContent() {
+            const t = translations[currentLanguage];
+            let csv = `${t.colBagId}\t${t.colDate}\t${t.colVersion}\t${t.colPacker}\t${t.colProof}\n`;
+
+            currentResults.forEach(item => {
+                const status = item.timestamp?.status === 'verified'
+                    ? `Verified @${item.timestamp.blockHeight}`
+                    : 'Pending';
+                csv += `${item.bagId || 'N/A'}\t${item.dateFormatted || '---'}\t${item.version || 'Unknown'}\t${item.packer || 'Unknown'}\t${status}\n`;
+            });
+
+            navigator.clipboard.writeText(csv).then(() => {
+                const btn = document.getElementById('copyButton');
+                btn.querySelector('span').textContent = t.copied;
+                setTimeout(() => btn.querySelector('span').textContent = t.copyResults, 2000);
+            });
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', updateLanguage);
+    </script>
+</body>
+</html>
