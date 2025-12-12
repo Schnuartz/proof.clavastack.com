@@ -28,13 +28,17 @@ const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 // --- Middleware ---
 console.log("Configuring middleware ...");
-// 1. CORS-Konfiguration: Erlaubt Anfragen von JEDER Domain (*). 
+// 1. CORS-Konfiguration: Erlaubt Anfragen von JEDER Domain (*).
 // Dies ist für das Debugging am einfachsten.
 app.use(cors({
     origin: '*',
-    methods: ['POST', 'GET'],
-    allowedHeaders: ['Content-Type', 'X-Auth-Token']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-Auth-Token'],
+    credentials: false
 }));
+
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors());
 
 // 2. Body Parser: Erlaubt das Verarbeiten von JSON-Anfragen (bis zu 50MB für Bild-Base64)
 app.use(express.json({ limit: '50mb' }));  
