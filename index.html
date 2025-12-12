@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seriennummern-Verifikation (Sicherer Proxy)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://opentimestamps.org/assets/javascripts/vendor/opentimestamps.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -104,6 +105,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verpacker</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blockchain Proof</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="bg-white divide-y divide-gray-200">
@@ -130,6 +132,74 @@
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                     X/Twitter
                 </a>
+            </div>
+        </div>
+
+        <!-- Timestamp Proof Modal -->
+        <div id="timestampModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg mx-4 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-2xl font-bold text-gray-800">Blockchain Timestamp Proof</h3>
+                    <button onclick="closeTimestampModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+
+                <div id="timestampVerified" class="hidden mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div class="flex items-center gap-2 text-green-700 font-semibold mb-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Verifiziert in der Bitcoin Blockchain
+                    </div>
+                    <p class="text-sm text-green-600">Dieser Datensatz wurde nachweislich vor dem angegebenen Zeitpunkt erstellt.</p>
+                </div>
+
+                <div id="timestampPending" class="hidden mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="flex items-center gap-2 text-yellow-700 font-semibold mb-2">
+                        <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Warte auf Bitcoin Blockchain
+                    </div>
+                    <p class="text-sm text-yellow-600">Der Timestamp wurde an die Calendar-Server gesendet und wartet auf Aufnahme in einen Bitcoin-Block (ca. einige Stunden).</p>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-500 text-sm">Bag ID:</span>
+                        <span id="tsModalBagId" class="font-mono text-gray-900"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-500 text-sm">SHA-256 Hash:</span>
+                        <span id="tsModalHash" class="font-mono text-xs text-gray-900 break-all"></span>
+                    </div>
+                    <div id="tsBlockHeightRow" class="hidden flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-500 text-sm">Bitcoin Block:</span>
+                        <a id="tsModalBlockHeight" href="#" target="_blank" class="font-mono text-blue-600 hover:text-blue-800 underline"></a>
+                    </div>
+                    <div id="tsBlockTimeRow" class="hidden flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-500 text-sm">Block-Zeit:</span>
+                        <span id="tsModalBlockTime" class="text-gray-900"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-500 text-sm">Erstellt am:</span>
+                        <span id="tsModalCreated" class="text-gray-900"></span>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex gap-3">
+                    <button id="downloadOtsButton" onclick="downloadOtsFile()" class="flex-1 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        .ots herunterladen
+                    </button>
+                    <button id="verifyExternalButton" onclick="verifyExternal()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                        Extern verifizieren
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -166,9 +236,11 @@
         const sortControls = document.getElementById('sortControls');
         const sortSelect = document.getElementById('sortSelect');
         const packerModal = document.getElementById('packerModal');
+        const timestampModal = document.getElementById('timestampModal');
 
         let isAuthenticated = false;
         let currentResults = []; // Speichert Ergebnisse für Sortierung
+        let currentTimestampData = null; // Speichert aktuelle Timestamp-Daten für Modal
         const SECRET_TOKEN = localStorage.getItem('auth_token');
 
         if (SECRET_TOKEN) {
@@ -225,11 +297,11 @@
             }
         }
 
-        function setProcessingState(isProcessing) {
+        function setProcessingState(isProcessing, statusText = 'Analysiere...') {
             verifyButton.disabled = isProcessing || !isAuthenticated || !imageInput.files.length;
             verificationArea.classList.toggle('pointer-events-none', isProcessing);
             if (isProcessing) {
-                buttonText.textContent = 'Analysiere...';
+                buttonText.textContent = statusText;
                 loadingSpinner.classList.remove('hidden');
             } else {
                 buttonText.textContent = 'Bags analysieren';
@@ -249,13 +321,158 @@
             });
         }
 
+        // =====================================================
+        // OpenTimestamps Funktionen
+        // =====================================================
+
+        // Hilfsfunktion: Bytes zu Hex
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Hilfsfunktion: Hex zu Bytes
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        // SHA-256 Hash berechnen
+        async function sha256Hash(data) {
+            const encoder = new TextEncoder();
+            const dataBuffer = encoder.encode(data);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+            return new Uint8Array(hashBuffer);
+        }
+
+        // Timestamp für einen Bag erstellen
+        async function createTimestamp(bagData) {
+            try {
+                // Erstelle einen eindeutigen String aus den Bag-Daten
+                const dataString = JSON.stringify({
+                    bagId: bagData.bagId,
+                    version: bagData.version,
+                    packer: bagData.packer,
+                    date: bagData.date
+                });
+
+                // Berechne SHA-256 Hash
+                const hashBytes = await sha256Hash(dataString);
+                const hashHex = bytesToHex(hashBytes);
+
+                // Erstelle OpenTimestamps DetachedTimestampFile
+                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+                    new OpenTimestamps.Ops.OpSHA256(),
+                    hashBytes
+                );
+
+                // Sende an Calendar-Server für Timestamping
+                await OpenTimestamps.stamp(detached);
+
+                // Serialisiere den Timestamp
+                const otsBytes = detached.serializeToBytes();
+                const otsHex = bytesToHex(otsBytes);
+
+                return {
+                    hash: hashHex,
+                    otsData: otsHex,
+                    dataString: dataString,
+                    createdAt: new Date().toISOString(),
+                    status: 'pending', // pending = wartet auf Bitcoin-Block
+                    blockHeight: null,
+                    blockTime: null
+                };
+            } catch (error) {
+                console.error('Fehler beim Erstellen des Timestamps:', error);
+                return null;
+            }
+        }
+
+        // Timestamp verifizieren und Blockchain-Info holen
+        async function verifyTimestamp(timestampInfo) {
+            try {
+                const otsBytes = hexToBytes(timestampInfo.otsData);
+                const hashBytes = hexToBytes(timestampInfo.hash);
+
+                // Deserialisiere den Timestamp
+                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+
+                // Erstelle das Original-Detached-File für Verifikation
+                const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+                    new OpenTimestamps.Ops.OpSHA256(),
+                    hashBytes
+                );
+
+                // Versuche zu verifizieren
+                const verifyResult = await OpenTimestamps.verify(detachedOts, detached);
+
+                if (verifyResult && Object.keys(verifyResult).length > 0) {
+                    // Timestamp ist verifiziert
+                    const attestations = Object.keys(verifyResult);
+                    const firstAttestation = attestations[0];
+                    const unixTime = verifyResult[firstAttestation];
+
+                    return {
+                        verified: true,
+                        blockHeight: firstAttestation,
+                        blockTime: new Date(unixTime * 1000).toISOString(),
+                        blockTimeFormatted: new Date(unixTime * 1000).toLocaleString('de-DE')
+                    };
+                }
+
+                return { verified: false };
+            } catch (error) {
+                console.error('Fehler bei Timestamp-Verifizierung:', error);
+                return { verified: false };
+            }
+        }
+
+        // Timestamp upgraden (prüft ob nun in Blockchain)
+        async function upgradeTimestamp(timestampInfo) {
+            try {
+                const otsBytes = hexToBytes(timestampInfo.otsData);
+                const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+
+                // Upgrade versuchen
+                const changed = await OpenTimestamps.upgrade(detachedOts);
+
+                if (changed) {
+                    // Serialisiere den aktualisierten Timestamp
+                    const newOtsBytes = detachedOts.serializeToBytes();
+                    return bytesToHex(newOtsBytes);
+                }
+
+                return null;
+            } catch (error) {
+                console.error('Fehler beim Timestamp-Upgrade:', error);
+                return null;
+            }
+        }
+
+        // Speichert Timestamps im localStorage
+        function saveTimestamps(timestamps) {
+            localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+        }
+
+        // Lädt Timestamps aus localStorage
+        function loadTimestamps() {
+            const stored = localStorage.getItem('bag_timestamps');
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        // =====================================================
+        // Haupt-Verifikationsprozess
+        // =====================================================
+
         async function processVerification() {
             if (!isAuthenticated) return;
 
             const file = imageInput.files[0];
             if (!file) return;
 
-            setProcessingState(true);
+            setProcessingState(true, 'Analysiere...');
             resultsBody.innerHTML = '';
             initialMessage.classList.add('hidden');
             resultsTable.classList.add('hidden');
@@ -308,6 +525,47 @@
                     })
                 }));
 
+                // Timestamps erstellen
+                setProcessingState(true, 'Erstelle Blockchain-Timestamps...');
+                const timestamps = loadTimestamps();
+
+                for (const item of resultsWithDate) {
+                    const bagKey = `bag_${item.bagId}`;
+
+                    // Prüfe ob schon ein Timestamp existiert
+                    if (!timestamps[bagKey]) {
+                        const tsInfo = await createTimestamp(item);
+                        if (tsInfo) {
+                            timestamps[bagKey] = tsInfo;
+                            item.timestamp = tsInfo;
+                        }
+                    } else {
+                        // Existierender Timestamp - versuche zu upgraden/verifizieren
+                        const existing = timestamps[bagKey];
+
+                        // Versuche Upgrade falls noch pending
+                        if (existing.status === 'pending') {
+                            const upgradedOts = await upgradeTimestamp(existing);
+                            if (upgradedOts) {
+                                existing.otsData = upgradedOts;
+                            }
+
+                            // Versuche Verifizierung
+                            const verifyResult = await verifyTimestamp(existing);
+                            if (verifyResult.verified) {
+                                existing.status = 'verified';
+                                existing.blockHeight = verifyResult.blockHeight;
+                                existing.blockTime = verifyResult.blockTime;
+                                existing.blockTimeFormatted = verifyResult.blockTimeFormatted;
+                            }
+                        }
+
+                        item.timestamp = existing;
+                    }
+                }
+
+                saveTimestamps(timestamps);
+
                 currentResults = resultsWithDate;
                 displayResults(resultsWithDate, true);
 
@@ -353,7 +611,7 @@
 
             const sortedResults = sortResults(results);
 
-            sortedResults.forEach(item => {
+            sortedResults.forEach((item, index) => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
 
@@ -365,11 +623,38 @@
                     packerHtml = `<span class="text-gray-500">${item.packer || 'Unbekannt'}</span>`;
                 }
 
+                // Timestamp-Proof Badge
+                let proofHtml;
+                if (item.timestamp) {
+                    if (item.timestamp.status === 'verified') {
+                        proofHtml = `
+                            <button onclick="showTimestampModal(${index})"
+                                class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold hover:bg-green-200 transition cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Timestamped @${item.timestamp.blockHeight}
+                            </button>`;
+                    } else {
+                        proofHtml = `
+                            <button onclick="showTimestampModal(${index})"
+                                class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold hover:bg-yellow-200 transition cursor-pointer">
+                                <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Pending...
+                            </button>`;
+                    }
+                } else {
+                    proofHtml = `<span class="text-gray-400 text-xs">Kein Timestamp</span>`;
+                }
+
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.bagId || 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${item.dateFormatted || '---'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.version || 'Unbekannt'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${proofHtml}</td>
                 `;
                 resultsBody.appendChild(row);
             });
@@ -381,6 +666,97 @@
             sortControls.style.display = 'flex';
             initialMessage.classList.add('hidden');
         }
+
+        // =====================================================
+        // Timestamp Modal Funktionen
+        // =====================================================
+
+        function showTimestampModal(index) {
+            const item = currentResults[index];
+            if (!item || !item.timestamp) return;
+
+            currentTimestampData = { item, index };
+
+            // Modal-Inhalte setzen
+            document.getElementById('tsModalBagId').textContent = item.bagId || 'N/A';
+            document.getElementById('tsModalHash').textContent = item.timestamp.hash;
+            document.getElementById('tsModalCreated').textContent = new Date(item.timestamp.createdAt).toLocaleString('de-DE');
+
+            // Status-Anzeige
+            const verifiedDiv = document.getElementById('timestampVerified');
+            const pendingDiv = document.getElementById('timestampPending');
+            const blockHeightRow = document.getElementById('tsBlockHeightRow');
+            const blockTimeRow = document.getElementById('tsBlockTimeRow');
+
+            if (item.timestamp.status === 'verified') {
+                verifiedDiv.classList.remove('hidden');
+                pendingDiv.classList.add('hidden');
+                blockHeightRow.classList.remove('hidden');
+                blockHeightRow.style.display = 'flex';
+                blockTimeRow.classList.remove('hidden');
+                blockTimeRow.style.display = 'flex';
+
+                const blockHeightLink = document.getElementById('tsModalBlockHeight');
+                blockHeightLink.textContent = `#${item.timestamp.blockHeight}`;
+                blockHeightLink.href = `https://mempool.space/block/${item.timestamp.blockHeight}`;
+
+                document.getElementById('tsModalBlockTime').textContent = item.timestamp.blockTimeFormatted;
+            } else {
+                verifiedDiv.classList.add('hidden');
+                pendingDiv.classList.remove('hidden');
+                blockHeightRow.classList.add('hidden');
+                blockHeightRow.style.display = 'none';
+                blockTimeRow.classList.add('hidden');
+                blockTimeRow.style.display = 'none';
+            }
+
+            timestampModal.classList.remove('hidden');
+            timestampModal.style.display = 'flex';
+        }
+
+        function closeTimestampModal() {
+            timestampModal.classList.add('hidden');
+            timestampModal.style.display = 'none';
+            currentTimestampData = null;
+        }
+
+        // Modal schließen bei Klick außerhalb
+        timestampModal.addEventListener('click', (e) => {
+            if (e.target === timestampModal) {
+                closeTimestampModal();
+            }
+        });
+
+        // .ots Datei herunterladen
+        function downloadOtsFile() {
+            if (!currentTimestampData || !currentTimestampData.item.timestamp) return;
+
+            const ts = currentTimestampData.item.timestamp;
+            const bagId = currentTimestampData.item.bagId;
+
+            // Konvertiere Hex zu Bytes
+            const otsBytes = hexToBytes(ts.otsData);
+
+            // Erstelle Blob und Download
+            const blob = new Blob([otsBytes], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bag_${bagId}_timestamp.ots`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Externe Verifizierung öffnen
+        function verifyExternal() {
+            window.open('https://opentimestamps.org/', '_blank');
+        }
+
+        // =====================================================
+        // Verpacker Modal Funktionen
+        // =====================================================
 
         function showPackerProfile(packerName) {
             const packer = PACKERS[packerName];
@@ -406,11 +782,21 @@
             }
         });
 
+        // =====================================================
+        // Export-Funktion
+        // =====================================================
+
         function copyTableContent() {
-            let csv = "Bag ID\tDatum\tVersion\tVerpacker\n";
+            let csv = "Bag ID\tDatum\tVersion\tVerpacker\tTimestamp Status\n";
 
             currentResults.forEach(item => {
-                csv += `${item.bagId || 'N/A'}\t${item.dateFormatted || '---'}\t${item.version || 'Unbekannt'}\t${item.packer || 'Unbekannt'}\n`;
+                let tsStatus = 'Kein Timestamp';
+                if (item.timestamp) {
+                    tsStatus = item.timestamp.status === 'verified'
+                        ? `Verifiziert @Block ${item.timestamp.blockHeight}`
+                        : 'Pending';
+                }
+                csv += `${item.bagId || 'N/A'}\t${item.dateFormatted || '---'}\t${item.version || 'Unbekannt'}\t${item.packer || 'Unbekannt'}\t${tsStatus}\n`;
             });
 
             navigator.clipboard.writeText(csv).then(() => {
