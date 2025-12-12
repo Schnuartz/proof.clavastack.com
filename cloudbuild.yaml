@@ -22,7 +22,7 @@ steps:
       - 'deploy'
       - 'secure-ai-proxy-server'
       - '--image=gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
-      - '--region=us-central1'
+      - '--region=europe-west1'
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'

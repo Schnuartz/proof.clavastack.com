@@ -1,1 +1,8 @@
 node_modules
+
+# Claude Code Einstellungen (enthalten möglicherweise Secrets)
+.claude/
+
+# Testdateien
+testing-pictures/
+nul
