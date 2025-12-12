@@ -84,14 +84,26 @@
 
         <!-- ERGEBNISSE -->
         <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Analyse-Ergebnisse</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-700">3. Analyse-Ergebnisse</h2>
+                <div id="sortControls" class="hidden flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Sortieren nach:</label>
+                    <select id="sortSelect" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="date-desc">Datum (neueste zuerst)</option>
+                        <option value="date-asc">Datum (älteste zuerst)</option>
+                        <option value="bagId-asc">Bag ID (aufsteigend)</option>
+                        <option value="bagId-desc">Bag ID (absteigend)</option>
+                    </select>
+                </div>
+            </div>
             <div id="resultsTableContainer" class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 hidden" id="resultsTable">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bag ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verifizierte Seriennummer</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verpacker</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="bg-white divide-y divide-gray-200">
@@ -100,10 +112,25 @@
                 </table>
                 <p id="initialMessage" class="text-gray-500 text-center py-4">Laden Sie ein Bild hoch und verifizieren Sie es, um die Ergebnisse zu sehen.</p>
             </div>
-            
+
             <button id="copyButton" class="hidden mt-4 px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150" onclick="copyTableContent()">
                 Ergebnisse kopieren
             </button>
+        </div>
+
+        <!-- Verpacker-Profil Modal -->
+        <div id="packerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md mx-4 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 id="packerName" class="text-2xl font-bold text-gray-800"></h3>
+                    <button onclick="closePackerModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+                <p id="packerDescription" class="text-gray-600 mb-4"></p>
+                <a id="packerTwitter" href="#" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    X/Twitter
+                </a>
+            </div>
         </div>
     </div>
 
@@ -113,6 +140,15 @@
         // ***************************************************************
         const PROXY_API_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app/api/verify-serial-number";
         // ***************************************************************
+
+        // Verpacker-Profile
+        const PACKERS = {
+            "Schnuartz": {
+                name: "Schnuartz",
+                description: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
+                twitter: "https://x.com/schnuartz"
+            }
+        };
 
         const verificationArea = document.getElementById('verification-area');
         const authButton = document.getElementById('authButton');
@@ -127,8 +163,12 @@
         const buttonText = document.getElementById('buttonText');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const copyButton = document.getElementById('copyButton');
+        const sortControls = document.getElementById('sortControls');
+        const sortSelect = document.getElementById('sortSelect');
+        const packerModal = document.getElementById('packerModal');
 
         let isAuthenticated = false;
+        let currentResults = []; // Speichert Ergebnisse für Sortierung
         const SECRET_TOKEN = localStorage.getItem('auth_token');
 
         if (SECRET_TOKEN) {
@@ -167,6 +207,12 @@
 
         verifyButton.addEventListener('click', processVerification);
 
+        sortSelect.addEventListener('change', () => {
+            if (currentResults.length > 0) {
+                displayResults(currentResults, false);
+            }
+        });
+
         function displayFileName(input) {
             const display = document.getElementById('fileNameDisplay');
             const fileLabel = document.getElementById('fileLabel');
@@ -186,7 +232,7 @@
                 buttonText.textContent = 'Analysiere...';
                 loadingSpinner.classList.remove('hidden');
             } else {
-                buttonText.textContent = 'Seriennummern verifizieren';
+                buttonText.textContent = 'Bags analysieren';
                 loadingSpinner.classList.add('hidden');
             }
         }
@@ -214,24 +260,21 @@
             initialMessage.classList.add('hidden');
             resultsTable.classList.add('hidden');
             copyButton.classList.add('hidden');
+            sortControls.classList.add('hidden');
 
             try {
-                // 1. Bild in Base64 umwandeln
                 const base64Data = await base64EncodeFile(file);
-                
-                // 2. Payload erstellen (inkl. Base64-Daten)
+
                 const payload = {
                     mimeType: file.type,
                     data: base64Data
                 };
 
-                // 3. API-Aufruf an den Proxy-Server
                 const response = await fetch(PROXY_API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // Senden des geheimen Tokens im Header
-                        'X-Auth-Token': localStorage.getItem('auth_token') 
+                        'X-Auth-Token': localStorage.getItem('auth_token')
                     },
                     body: JSON.stringify(payload)
                 });
@@ -239,10 +282,10 @@
                 if (response.status === 401) {
                     alert('Fehler: Ihr Authentifizierungs-Token ist ungültig. Bitte überprüfen Sie die Eingabe und versuchen Sie es erneut.');
                     localStorage.removeItem('auth_token');
-                    location.reload(); 
+                    location.reload();
                     return;
                 }
-                
+
                 if (!response.ok) {
                     const errorDetails = await response.json();
                     alert(`API Fehler (${response.status}): ${errorDetails.error || 'Unbekannter Serverfehler.'}`);
@@ -250,7 +293,23 @@
                 }
 
                 const finalResult = await response.json();
-                displayResults(finalResult);
+
+                // Datum (Upload-Zeitpunkt) hinzufügen
+                const uploadDate = new Date();
+                const resultsWithDate = finalResult.map(item => ({
+                    ...item,
+                    date: uploadDate.toISOString(),
+                    dateFormatted: uploadDate.toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                }));
+
+                currentResults = resultsWithDate;
+                displayResults(resultsWithDate, true);
 
             } catch (error) {
                 console.error("Verifizierungsfehler:", error);
@@ -260,31 +319,57 @@
             }
         }
 
-        function displayResults(results) {
+        function sortResults(results) {
+            const sortValue = sortSelect.value;
+            const sorted = [...results];
+
+            switch (sortValue) {
+                case 'date-desc':
+                    sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    break;
+                case 'date-asc':
+                    sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    break;
+                case 'bagId-asc':
+                    sorted.sort((a, b) => (a.bagId || '').localeCompare(b.bagId || '', undefined, {numeric: true}));
+                    break;
+                case 'bagId-desc':
+                    sorted.sort((a, b) => (b.bagId || '').localeCompare(a.bagId || '', undefined, {numeric: true}));
+                    break;
+            }
+            return sorted;
+        }
+
+        function displayResults(results, isNewUpload = true) {
             resultsBody.innerHTML = '';
+
             if (!results || results.length === 0) {
-                initialMessage.textContent = 'Keine Seriennummern gefunden oder verifiziert.';
+                initialMessage.textContent = 'Keine Bags auf dem Bild erkannt.';
                 initialMessage.classList.remove('hidden');
                 resultsTable.classList.add('hidden');
+                sortControls.classList.add('hidden');
                 return;
             }
 
-            results.forEach(item => {
-                const isFound = item.serialNumber && item.serialNumber !== 'NOT_FOUND';
-                const statusClass = isFound ? 'bg-green-100 text-green-700 font-semibold' : 'bg-red-100 text-red-700 font-semibold';
-                const statusText = isFound ? 'VERIFIZIERT' : 'FEHLT/NICHT EINDEUTIG';
+            const sortedResults = sortResults(results);
 
+            sortedResults.forEach(item => {
                 const row = document.createElement('tr');
-                row.className = isFound ? 'hover:bg-green-50' : 'hover:bg-red-50';
-                
+                row.className = 'hover:bg-gray-50';
+
+                // Verpacker als klickbaren Link wenn bekannt
+                let packerHtml;
+                if (item.packer && PACKERS[item.packer]) {
+                    packerHtml = `<button onclick="showPackerProfile('${item.packer}')" class="text-emerald-600 hover:text-emerald-800 font-semibold underline">${item.packer}</button>`;
+                } else {
+                    packerHtml = `<span class="text-gray-500">${item.packer || 'Unbekannt'}</span>`;
+                }
+
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.bagId || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.serialNumber || '---'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 rounded-full ${statusClass}">
-                            ${statusText}
-                        </span>
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.bagId || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${item.dateFormatted || '---'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.version || 'Unbekannt'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
                 `;
                 resultsBody.appendChild(row);
             });
@@ -292,37 +377,65 @@
             resultsTable.classList.remove('hidden');
             resultsTableContainer.classList.remove('hidden');
             copyButton.classList.remove('hidden');
+            sortControls.classList.remove('hidden');
+            sortControls.style.display = 'flex';
             initialMessage.classList.add('hidden');
         }
 
+        function showPackerProfile(packerName) {
+            const packer = PACKERS[packerName];
+            if (!packer) return;
+
+            document.getElementById('packerName').textContent = packer.name;
+            document.getElementById('packerDescription').textContent = packer.description;
+            document.getElementById('packerTwitter').href = packer.twitter;
+
+            packerModal.classList.remove('hidden');
+            packerModal.style.display = 'flex';
+        }
+
+        function closePackerModal() {
+            packerModal.classList.add('hidden');
+            packerModal.style.display = 'none';
+        }
+
+        // Modal schließen bei Klick außerhalb
+        packerModal.addEventListener('click', (e) => {
+            if (e.target === packerModal) {
+                closePackerModal();
+            }
+        });
+
         function copyTableContent() {
-            let csv = "Bag ID\tSeriennummer\tStatus\n";
-            const rows = resultsBody.querySelectorAll('tr');
-            
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                const bagId = cells[0].textContent;
-                const serialNumber = cells[1].textContent;
-                const status = cells[2].querySelector('span').textContent;
-                csv += `${bagId}\t${serialNumber}\t${status}\n`;
+            let csv = "Bag ID\tDatum\tVersion\tVerpacker\n";
+
+            currentResults.forEach(item => {
+                csv += `${item.bagId || 'N/A'}\t${item.dateFormatted || '---'}\t${item.version || 'Unbekannt'}\t${item.packer || 'Unbekannt'}\n`;
             });
 
-            const tempTextArea = document.createElement("textarea");
-            tempTextArea.value = csv;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            
-            try {
-                document.execCommand('copy');
+            navigator.clipboard.writeText(csv).then(() => {
                 copyButton.textContent = 'Kopiert!';
                 setTimeout(() => {
                     copyButton.textContent = 'Ergebnisse kopieren';
                 }, 2000);
-            } catch (err) {
-                alert('Kopieren fehlgeschlagen.');
-            } finally {
-                document.body.removeChild(tempTextArea);
-            }
+            }).catch(() => {
+                // Fallback für ältere Browser
+                const tempTextArea = document.createElement("textarea");
+                tempTextArea.value = csv;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyButton.textContent = 'Kopiert!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Ergebnisse kopieren';
+                    }, 2000);
+                } catch (err) {
+                    alert('Kopieren fehlgeschlagen.');
+                } finally {
+                    document.body.removeChild(tempTextArea);
+                }
+            });
         }
 
         // Initiale Prüfung beim Laden

@@ -45,7 +45,36 @@ app.get('/', (req, res) => {
     res.status(200).send("Proxy-Server läuft. Benutzen Sie den /api/verify-serial-number Endpunkt mit POST.");
 });
 
-// 4. Authentifizierungs-Middleware
+// 4. Mehrheitsprinzip-Funktion für Version und Packer
+function applyMajorityPrinciple(bags) {
+    if (!bags || bags.length === 0) return bags;
+
+    // Finde die häufigste Version (ohne UNKNOWN)
+    const versions = bags.map(b => b.version).filter(v => v && v !== 'UNKNOWN');
+    const majorityVersion = getMostFrequent(versions);
+
+    // Finde den häufigsten Packer (ohne UNKNOWN)
+    const packers = bags.map(b => b.packer).filter(p => p && p !== 'UNKNOWN');
+    const majorityPacker = getMostFrequent(packers);
+
+    // Ersetze UNKNOWN mit Mehrheitswerten
+    return bags.map(bag => ({
+        ...bag,
+        version: (bag.version === 'UNKNOWN' && majorityVersion) ? majorityVersion : bag.version,
+        packer: (bag.packer === 'UNKNOWN' && majorityPacker) ? majorityPacker : bag.packer
+    }));
+}
+
+function getMostFrequent(arr) {
+    if (arr.length === 0) return null;
+    const counts = {};
+    arr.forEach(item => {
+        counts[item] = (counts[item] || 0) + 1;
+    });
+    return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+}
+
+// 5. Authentifizierungs-Middleware
 function authenticate(req, res, next) {
     const token = req.header('X-Auth-Token');
 
@@ -73,20 +102,22 @@ app.post('/api/verify-serial-number', authenticate, async (req, res) => {
         }
         
         // Die Prompt-Anweisung an das Modell
-        const prompt = `Du bist ein hochpräziser OCR-Analyst. Deine Aufgabe ist es, die Seriennummern und Bag IDs aus dem folgenden Bild zu extrahieren.
-        
-        Extrahiere die folgenden Informationen und gib sie ausschließlich als JSON-Array zurück:
-        1. Die 'Bag ID' (falls sichtbar)
-        2. Die zugehörige 'Seriennummer' (SerialNumber)
-        
-        Wenn du keine eindeutige Seriennummer finden kannst, setze den Wert auf 'NOT_FOUND'. 
-        
-        Beispiel für die gewünschte JSON-Ausgabe:
-        [
-            { "bagId": "BAG-123", "serialNumber": "SN-A1B2C3D4E5" },
-            { "bagId": "BAG-456", "serialNumber": "NOT_FOUND" }
-        ]
-        `;
+        const prompt = `Du bist ein hochpräziser OCR-Analyst für Specter Hardware Wallet Verpackungen (Tamper-Evident Bags).
+
+Extrahiere die folgenden Informationen von JEDEM sichtbaren Bag auf dem Foto und gib sie als JSON-Array zurück:
+
+1. **bagId**: Die Bag ID (eindeutige Nummer auf dem Beutel)
+2. **version**: Die Firmware-Version. Steht als "Firmware: v1.9.0" auf dem Bag. Extrahiere NUR den Teil "v1.9.0" (ohne "Firmware:"). Falls nicht lesbar, setze auf "UNKNOWN".
+3. **packer**: Der Verpacker. Steht meist als "by Schnuartz" oder "von Schnuartz" auf dem Bag. Extrahiere NUR den Namen (z.B. "Schnuartz"). Falls nicht lesbar, setze auf "UNKNOWN".
+
+WICHTIG: Bekannte Verpacker sind: "Schnuartz"
+
+Beispiel für die gewünschte JSON-Ausgabe:
+[
+    { "bagId": "12345", "version": "v1.9.0", "packer": "Schnuartz" },
+    { "bagId": "67890", "version": "v1.8.5", "packer": "UNKNOWN" }
+]
+`;
 
         // KI-Aufruf mit Bilddaten
         const response = await ai.models.generateContent({
@@ -104,9 +135,12 @@ app.post('/api/verify-serial-number', authenticate, async (req, res) => {
         // Die Antwort ist ein JSON-String. Wir parsen ihn und senden ihn zurück.
         const jsonText = response.candidates[0].content.parts[0].text;
         const result = JSON.parse(jsonText);
-        
+
+        // Mehrheitsprinzip für Version und Packer anwenden
+        const processedResult = applyMajorityPrinciple(result);
+
         console.log("KI-Analyse erfolgreich abgeschlossen.");
-        res.json(result);
+        res.json(processedResult);
 
     } catch (error) {
         console.error("Fehler während der KI-Verarbeitung:", error);
