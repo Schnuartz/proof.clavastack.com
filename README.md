@@ -1,16 +1,53 @@
 # proof.clavastack.com
-This is the Code, to upload the Tamper Evident Bag Numbers from the Specter Hardware Wallets to my website.
 
-This are the files I use for the website:
+**Blockchain-verified proof of packaging for Specter Hardware Wallets**
+
 https://proof.clavastack.com/
 
-Hosted at https://hpanel.hostinger.com/websites/
+## What it does
 
-The files index.js and package.js are hosted in my google cloud run.
-https://console.cloud.google.com/
+1. Upload or take a photo of Tamper-Evident Bags
+2. AI (Google Gemini) extracts Bag IDs, firmware version, and packer info
+3. Creates Bitcoin blockchain timestamp via OpenTimestamps
+4. Stores proof in Google Cloud Storage
 
-Here I have two environment variables:
-GEMINI_API_KEY = xxxxxxxxxxxx
-AUTH_TOKEN = [like a password]
+## Tech Stack
 
-Also the website already works if you paste the index.html code into Gemini and say that it should make it work. Then it should work in Canvas of Gemini where it even adds a API token which automatically works as long as you are in Gemini Canvas.
+- **Frontend**: Vanilla JS + Tailwind CSS (Hostinger)
+- **Backend**: Node.js/Express (Google Cloud Run)
+- **AI**: Google Gemini 2.5 Flash
+- **Storage**: Google Cloud Storage
+- **Blockchain**: OpenTimestamps (Bitcoin)
+
+## Pages
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Main | `/` | Public list of all proofs |
+| Add | `/add/` | Create new proofs (auth required) |
+| Admin | `/add/admin/` | Delete proofs (auth required) |
+
+## Quick Start
+
+```bash
+# Install
+npm install
+
+# Build CSS
+npm run build:css
+
+# Run backend locally
+export GEMINI_API_KEY="your-key"
+export AUTH_TOKEN="your-token"
+node index.js
+```
+
+## Deployment
+
+Push to `main` branch auto-deploys:
+- Frontend → Hostinger
+- Backend → Google Cloud Run
+
+## Documentation
+
+See [CLAUDE.md](CLAUDE.md) for detailed documentation.
