@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ClavaStack</title>
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+    <link rel="stylesheet" href="../../dist/output.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="text-specter-text">
+    <!-- Header -->
+    <header class="border-b border-specter-border bg-specter-darker/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center gap-3">
+                    <img src="../../assets/logos/ClavaStack.png" alt="ClavaStack" class="h-10 w-auto" onerror="this.style.display='none'">
+                    <span class="text-xl font-bold">ClavaStack <span class="text-specter-cyan">Admin</span></span>
+                </a>
+                <div class="flex items-center gap-4">
+                    <a href="/add/" class="px-4 py-2 bg-specter-card border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        <span data-i18n="backToAdd">Back to Add</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Auth Check -->
+        <div id="authRequired" class="bg-specter-card border border-specter-border rounded-2xl p-8 text-center">
+            <svg class="w-16 h-16 mx-auto text-specter-error mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <h2 class="text-2xl font-bold mb-2" data-i18n="authRequiredTitle">Authentication Required</h2>
+            <p class="text-specter-textMuted mb-6" data-i18n="authRequiredDesc">Please authenticate on the Add page first to access the admin dashboard.</p>
+            <a href="/add/" class="inline-flex items-center gap-2 px-6 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition">
+                <span data-i18n="goToAdd">Go to Add Page</span>
+            </a>
+        </div>
+
+        <!-- Admin Panel (hidden until authenticated) -->
+        <div id="adminPanel" class="hidden">
+            <div class="bg-specter-card border border-specter-border rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-specter-border">
+                    <h2 class="text-2xl font-bold" data-i18n="manageProofs">Manage Proofs</h2>
+                    <p class="text-specter-textMuted mt-1" data-i18n="manageProofsDesc">Select entries to remove from the database</p>
+                </div>
+
+                <div class="p-4 border-b border-specter-border bg-specter-darker flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-specter-border bg-specter-dark text-specter-cyan focus:ring-specter-cyan">
+                            <span class="text-sm text-specter-textMuted" data-i18n="selectAll">Select All</span>
+                        </label>
+                        <span id="selectedCount" class="text-sm text-specter-textMuted">0 selected</span>
+                    </div>
+                    <button id="deleteSelectedBtn" onclick="deleteSelected()" disabled
+                        class="px-4 py-2 bg-specter-error text-white font-semibold rounded-lg hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        <span data-i18n="deleteSelected">Delete Selected</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-specter-darker">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider w-12"></th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colBagId">Bag ID</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colDate">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colVersion">Version</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colPacker">Packer</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-specter-textMuted uppercase tracking-wider" data-i18n="colStatus">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proofsTableBody" class="divide-y divide-specter-border">
+                            <!-- Proofs will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="emptyState" class="hidden py-16 text-center">
+                    <svg class="w-16 h-16 mx-auto text-specter-textMuted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2" data-i18n="noProofs">No proofs found</h3>
+                    <p class="text-specter-textMuted" data-i18n="noProofsDesc">There are no proofs in the database to manage.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-md mx-4 p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-full bg-specter-error/20 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-specter-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white" data-i18n="confirmDeleteTitle">Confirm Deletion</h3>
+                    <p id="confirmDeleteDesc" class="text-specter-textMuted text-sm"></p>
+                </div>
+            </div>
+            <p class="text-specter-textMuted mb-6" data-i18n="confirmDeleteWarning">This action cannot be undone. The selected proofs and their associated images will be permanently removed.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition">
+                    <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button onclick="confirmDelete()" class="flex-1 px-4 py-3 bg-specter-error text-white font-semibold rounded-lg hover:bg-red-600 transition">
+                    <span data-i18n="confirmDelete">Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // i18n translations
+        const translations = {
+            en: {
+                backToAdd: "Back to Add",
+                authRequiredTitle: "Authentication Required",
+                authRequiredDesc: "Please authenticate on the Add page first to access the admin dashboard.",
+                goToAdd: "Go to Add Page",
+                manageProofs: "Manage Proofs",
+                manageProofsDesc: "Select entries to remove from the database",
+                selectAll: "Select All",
+                deleteSelected: "Delete Selected",
+                colBagId: "Bag ID",
+                colDate: "Date",
+                colVersion: "Version",
+                colPacker: "Packer",
+                colStatus: "Status",
+                noProofs: "No proofs found",
+                noProofsDesc: "There are no proofs in the database to manage.",
+                confirmDeleteTitle: "Confirm Deletion",
+                confirmDeleteWarning: "This action cannot be undone. The selected proofs and their associated images will be permanently removed.",
+                cancel: "Cancel",
+                confirmDelete: "Delete",
+                verified: "Verified",
+                pending: "Pending",
+                selectedCount: "{count} selected",
+                deleteCount: "Delete {count} proof(s)?"
+            },
+            de: {
+                backToAdd: "Zurück zum Hinzufügen",
+                authRequiredTitle: "Authentifizierung erforderlich",
+                authRequiredDesc: "Bitte authentifizieren Sie sich zuerst auf der Hinzufügen-Seite, um auf das Admin-Dashboard zuzugreifen.",
+                goToAdd: "Zur Hinzufügen-Seite",
+                manageProofs: "Nachweise verwalten",
+                manageProofsDesc: "Wählen Sie Einträge aus, die aus der Datenbank entfernt werden sollen",
+                selectAll: "Alle auswählen",
+                deleteSelected: "Ausgewählte löschen",
+                colBagId: "Bag ID",
+                colDate: "Datum",
+                colVersion: "Version",
+                colPacker: "Verpacker",
+                colStatus: "Status",
+                noProofs: "Keine Nachweise gefunden",
+                noProofsDesc: "Es gibt keine Nachweise in der Datenbank zu verwalten.",
+                confirmDeleteTitle: "Löschung bestätigen",
+                confirmDeleteWarning: "Diese Aktion kann nicht rückgängig gemacht werden. Die ausgewählten Nachweise und ihre zugehörigen Bilder werden dauerhaft entfernt.",
+                cancel: "Abbrechen",
+                confirmDelete: "Löschen",
+                verified: "Verifiziert",
+                pending: "Ausstehend",
+                selectedCount: "{count} ausgewählt",
+                deleteCount: "{count} Nachweis(e) löschen?"
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('language') || 'en';
+        let allProofs = [];
+        let selectedBagIds = new Set();
+
+        // ===========================================
+        // IndexedDB for Image Storage
+        // ===========================================
+        const DB_NAME = 'ClavaStackProofDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'images';
+
+        function openImageDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'bagId' });
+                    }
+                };
+            });
+        }
+
+        async function deleteImage(bagId) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    store.delete(bagId);
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                return false;
+            }
+        }
+
+        // ===========================================
+        // Language
+        // ===========================================
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.textContent = t[key];
+            });
+        }
+
+        // ===========================================
+        // Auth Check
+        // ===========================================
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                document.getElementById('authRequired').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                loadProofs();
+            } else {
+                document.getElementById('authRequired').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.add('hidden');
+            }
+        }
+
+        // ===========================================
+        // Load and Render Proofs
+        // ===========================================
+        function loadProofs() {
+            const stored = localStorage.getItem('bag_timestamps');
+            if (stored) {
+                const timestamps = JSON.parse(stored);
+                allProofs = Object.keys(timestamps).map(key => ({
+                    bagId: key.replace('bag_', ''),
+                    ...timestamps[key]
+                }));
+            }
+            renderProofs();
+        }
+
+        function renderProofs() {
+            const tbody = document.getElementById('proofsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const t = translations[currentLanguage];
+
+            if (allProofs.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            tbody.innerHTML = allProofs.map(proof => {
+                let version = 'Unknown', packer = 'Unknown', date = '---';
+                try {
+                    const data = JSON.parse(proof.dataString);
+                    version = data.version || 'Unknown';
+                    packer = data.packer || 'Unknown';
+                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
+                } catch (e) {}
+
+                const statusBadge = proof.status === 'verified'
+                    ? `<span class="inline-flex items-center px-2 py-1 bg-specter-success/20 text-specter-success rounded text-xs font-semibold">${t.verified}</span>`
+                    : `<span class="inline-flex items-center px-2 py-1 bg-specter-warning/20 text-specter-warning rounded text-xs font-semibold">${t.pending}</span>`;
+
+                const isChecked = selectedBagIds.has(proof.bagId) ? 'checked' : '';
+
+                return `
+                    <tr class="hover:bg-specter-dark/50 transition">
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="proof-checkbox w-4 h-4 rounded border-specter-border bg-specter-dark text-specter-cyan focus:ring-specter-cyan"
+                                data-bag-id="${proof.bagId}" ${isChecked} onchange="toggleSelection('${proof.bagId}')">
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">${proof.bagId}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-specter-textMuted">${date}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-white">${version}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-specter-cyan">${packer}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ===========================================
+        // Selection Handling
+        // ===========================================
+        function toggleSelection(bagId) {
+            if (selectedBagIds.has(bagId)) {
+                selectedBagIds.delete(bagId);
+            } else {
+                selectedBagIds.add(bagId);
+            }
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const t = translations[currentLanguage];
+            const count = selectedBagIds.size;
+            document.getElementById('selectedCount').textContent = t.selectedCount.replace('{count}', count);
+            document.getElementById('deleteSelectedBtn').disabled = count === 0;
+            document.getElementById('selectAll').checked = count === allProofs.length && count > 0;
+        }
+
+        document.getElementById('selectAll').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                allProofs.forEach(p => selectedBagIds.add(p.bagId));
+            } else {
+                selectedBagIds.clear();
+            }
+            renderProofs();
+            updateSelectionUI();
+        });
+
+        // ===========================================
+        // Delete Functions
+        // ===========================================
+        function deleteSelected() {
+            if (selectedBagIds.size === 0) return;
+            const t = translations[currentLanguage];
+            document.getElementById('confirmDeleteDesc').textContent = t.deleteCount.replace('{count}', selectedBagIds.size);
+            document.getElementById('confirmModal').classList.remove('hidden');
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+
+        async function confirmDelete() {
+            // Delete from localStorage
+            const stored = localStorage.getItem('bag_timestamps');
+            if (stored) {
+                const timestamps = JSON.parse(stored);
+                for (const bagId of selectedBagIds) {
+                    delete timestamps[`bag_${bagId}`];
+                    // Delete image from IndexedDB
+                    await deleteImage(bagId);
+                }
+                localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+            }
+
+            // Reset selection and reload
+            selectedBagIds.clear();
+            closeConfirmModal();
+            loadProofs();
+            updateSelectionUI();
+        }
+
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('confirmModal')) closeConfirmModal();
+        });
+
+        // ===========================================
+        // Initialize
+        // ===========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            updateLanguage();
+            checkAuth();
+            updateSelectionUI();
+        });
+    </script>
+</body>
+</html>

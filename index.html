@@ -90,12 +90,11 @@
                         </div>
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                             <div class="relative">
-                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-specter-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-specter-textMuted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <input type="text" id="searchInput"
-                                    class="w-full sm:w-64 pl-10 pr-4 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none"
-                                    data-placeholder-i18n="searchPlaceholder">
+                                    class="w-full sm:w-48 pl-10 pr-3 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none">
                             </div>
                             <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
                                 <option value="date-desc" data-i18n="sortNewest">Newest first</option>
@@ -446,13 +445,13 @@
         const suppliers = [
             { name: "ClavaStack", url: "https://clavastack.com/", logo: "assets/logos/ClavaStack.png", region: "Europe, Germany" },
             { name: "Pleb.Style", url: "https://pleb.style/", logo: "assets/logos/Plebstyle.jpg", region: "Europe, Germany" },
-            { name: "Bayoto", url: "https://bayoto.me/", logo: "assets/logos/bayoto.svg", region: "Europe" },
-            { name: "Cryptomaan", url: "https://cryptomaan.eu/collections/hardware-wallets", logo: "assets/logos/cryptomaan.svg", region: "Europe, Netherlands" },
-            { name: "BTC Direct", url: "https://shop.btcdirect.eu/", logo: "assets/logos/btcdirect.svg", region: "Europe, Netherlands" },
+            { name: "Bayoto", url: "https://bayoto.me/", logo: "assets/logos/Bayoto.jpg", region: "Europe" },
+            { name: "Cryptomaan", url: "https://cryptomaan.eu/collections/hardware-wallets", logo: "assets/logos/Cryptomaan.jpg", region: "Europe, Netherlands" },
+            { name: "BTC Direct", url: "https://shop.btcdirect.eu/", logo: "assets/logos/btcdirect.jpg", region: "Europe, Netherlands" },
             { name: "Dezentralshop", url: "https://dezentralshop.ch/", logo: "assets/logos/Dezentralshop.jpg", region: "Europe, Switzerland" },
-            { name: "LWallet", url: "https://lwallet.com.ua/en/", logo: "assets/logos/lwallet.svg", region: "Europe, Ukraine" },
-            { name: "Bitcoin Brabant", url: "https://bitcoinbrabant.com/", logo: "assets/logos/bitcoinbrabant.svg", region: "Europe, Netherlands" },
-            { name: "Bitsaga", url: "https://bitsaga.be/", logo: "assets/logos/bitsaga.svg", region: "Europe, Belgium" }
+            { name: "LWallet", url: "https://lwallet.com.ua/en/", logo: "assets/logos/Lwallet.jpg", region: "Europe, Ukraine" },
+            { name: "Bitcoin Brabant", url: "https://bitcoinbrabant.com/", logo: "assets/logos/BitcoinBrabant.jpg", region: "Europe, Netherlands" },
+            { name: "Bitsaga", url: "https://bitsaga.be/", logo: "assets/logos/BitSaga.jpg", region: "Europe, Belgium" }
         ];
 
         function renderSuppliers() {
@@ -470,19 +469,99 @@
         }
 
         // ===========================================
+        // IndexedDB for Image Storage
+        // ===========================================
+        const DB_NAME = 'ClavaStackProofDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'images';
+
+        function openImageDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'bagId' });
+                    }
+                };
+            });
+        }
+
+        async function getImage(bagId) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.get(bagId);
+                    request.onsuccess = () => resolve(request.result?.imageData || null);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('Error getting image:', error);
+                return null;
+            }
+        }
+
+        async function getAllImages() {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const result = {};
+                        request.result.forEach(item => {
+                            result[item.bagId] = item.imageData;
+                        });
+                        resolve(result);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('Error getting all images:', error);
+                return {};
+            }
+        }
+
+        async function deleteImage(bagId) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    store.delete(bagId);
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                return false;
+            }
+        }
+
+        // ===========================================
         // Proofs Data & Rendering
         // ===========================================
         let allProofs = [];
         let currentTimestampData = null;
 
-        function loadProofs() {
+        async function loadProofs() {
             const stored = localStorage.getItem('bag_timestamps');
             if (stored) {
                 const timestamps = JSON.parse(stored);
-                allProofs = Object.keys(timestamps).map(key => ({
-                    bagId: key.replace('bag_', ''),
-                    ...timestamps[key]
-                }));
+                const images = await getAllImages();
+                allProofs = Object.keys(timestamps).map(key => {
+                    const bagId = key.replace('bag_', '');
+                    return {
+                        bagId: bagId,
+                        ...timestamps[key],
+                        imageData: images[bagId] || null
+                    };
+                });
             }
             renderProofs();
         }

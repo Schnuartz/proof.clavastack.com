@@ -39,6 +39,14 @@
                             </button>
                         </div>
                     </div>
+                    <!-- Admin Button (only visible when authenticated) -->
+                    <a id="adminLink" href="/add/admin/" class="hidden px-4 py-2 bg-specter-card border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span data-i18n="admin">Admin</span>
+                    </a>
                     <!-- Back Button -->
                     <a href="/" class="px-4 py-2 bg-specter-card border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,6 +272,7 @@
         // i18n
         const translations = {
             en: {
+                admin: "Admin",
                 backToList: "Back to List",
                 securityWarning: "Please enter the authentication token to enable secure proxy access.",
                 authTitle: "1. Authentication",
@@ -305,6 +314,7 @@
                 pending: "Pending..."
             },
             de: {
+                admin: "Admin",
                 backToList: "Zuruck zur Liste",
                 securityWarning: "Bitte geben Sie das Authentifizierungs-Token ein, um den sicheren Proxy-Zugriff zu aktivieren.",
                 authTitle: "1. Authentifizierung",
@@ -420,6 +430,9 @@
                 authButton.disabled = true;
                 authTokenInput.disabled = true;
                 verifyButton.disabled = !imageInput.files.length;
+                // Show admin link when authenticated
+                document.getElementById('adminLink').classList.remove('hidden');
+                document.getElementById('adminLink').style.display = 'flex';
             }
         }
 
@@ -470,6 +483,97 @@
             });
         }
 
+        // ===========================================
+        // IndexedDB for Image Storage
+        // ===========================================
+        const DB_NAME = 'ClavaStackProofDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'images';
+
+        function openImageDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'bagId' });
+                    }
+                };
+            });
+        }
+
+        async function saveImage(bagId, imageData) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    store.put({ bagId, imageData });
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (error) {
+                console.error('Error saving image:', error);
+                return false;
+            }
+        }
+
+        async function getImage(bagId) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.get(bagId);
+                    request.onsuccess = () => resolve(request.result?.imageData || null);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('Error getting image:', error);
+                return null;
+            }
+        }
+
+        async function deleteImage(bagId) {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    store.delete(bagId);
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                return false;
+            }
+        }
+
+        async function getAllImages() {
+            try {
+                const db = await openImageDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const result = {};
+                        request.result.forEach(item => {
+                            result[item.bagId] = item.imageData;
+                        });
+                        resolve(result);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('Error getting all images:', error);
+                return {};
+            }
+        }
+
         // OpenTimestamps functions
         function bytesToHex(bytes) {
             return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -511,6 +615,11 @@
                 const otsBytes = detached.serializeToBytes();
                 const otsHex = bytesToHex(otsBytes);
 
+                // Save image to IndexedDB
+                if (imageData) {
+                    await saveImage(bagData.bagId, imageData);
+                }
+
                 return {
                     hash: hashHex,
                     otsData: otsHex,
@@ -519,7 +628,6 @@
                     status: 'pending',
                     blockHeight: null,
                     blockTime: null
-                    // Note: imageData not stored to avoid localStorage quota issues
                 };
             } catch (error) {
                 console.error('Timestamp error:', error);
