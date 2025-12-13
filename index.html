@@ -88,7 +88,15 @@
                             <h2 class="text-2xl font-bold" data-i18n="proofTableTitle">Verified Packaging Proofs</h2>
                             <p class="text-specter-textMuted mt-1" data-i18n="proofTableSubtitle">All packages with Bitcoin blockchain timestamps</p>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                            <div class="relative">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-specter-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <input type="text" id="searchInput"
+                                    class="w-full sm:w-64 pl-10 pr-4 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none"
+                                    data-placeholder-i18n="searchPlaceholder">
+                            </div>
                             <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
                                 <option value="date-desc" data-i18n="sortNewest">Newest first</option>
                                 <option value="date-asc" data-i18n="sortOldest">Oldest first</option>
@@ -195,18 +203,26 @@
                 </div>
             </div>
 
-            <div class="mt-6 flex gap-3">
-                <button id="downloadOtsButton" onclick="downloadOtsFile()" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
+            <div class="mt-6 flex flex-col gap-3">
+                <div class="flex gap-3">
+                    <button id="downloadOtsButton" onclick="downloadOtsFile()" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span data-i18n="downloadOts">Download .ots</span>
+                    </button>
+                    <button onclick="verifyExternal()" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                        <span data-i18n="verifyExternal">Verify Externally</span>
+                    </button>
+                </div>
+                <button id="downloadTimestampImage" onclick="downloadTimestampImage()" class="hidden w-full px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <span data-i18n="downloadOts">Download .ots</span>
-                </button>
-                <button onclick="verifyExternal()" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                    </svg>
-                    <span data-i18n="verifyExternal">Verify Externally</span>
+                    <span data-i18n="downloadTimestampedImage">Download Timestamped Image</span>
                 </button>
             </div>
         </div>
@@ -225,6 +241,21 @@
                     <span data-i18n="downloadImage">Download Image</span>
                 </a>
             </div>
+        </div>
+    </div>
+
+    <!-- Packer Modal -->
+    <div id="packerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-md mx-4 p-6">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="packerName" class="text-2xl font-bold text-white"></h3>
+                <button onclick="closePackerModal()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
+            </div>
+            <p id="packerDescription" class="text-specter-textMuted mb-4"></p>
+            <a id="packerTwitter" href="#" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg hover:bg-specter-text transition">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X/Twitter
+            </a>
         </div>
     </div>
 
@@ -275,10 +306,12 @@
                 downloadOts: "Download .ots",
                 verifyExternal: "Verify Externally",
                 downloadImage: "Download Image",
+                downloadTimestampedImage: "Download Timestamped Image",
                 footerText: "Powered by OpenTimestamps & Bitcoin Blockchain.",
                 timestamped: "Timestamped",
                 pending: "Pending...",
-                viewImage: "View"
+                viewImage: "View",
+                searchPlaceholder: "Search by Bag ID, Date, Version, Packer, Block..."
             },
             de: {
                 addNew: "Hinzufugen",
@@ -315,14 +348,49 @@
                 downloadOts: ".ots herunterladen",
                 verifyExternal: "Extern verifizieren",
                 downloadImage: "Bild herunterladen",
+                downloadTimestampedImage: "Zeitgestempeltes Bild herunterladen",
                 footerText: "Powered by OpenTimestamps & Bitcoin Blockchain.",
                 timestamped: "Zeitgestempelt",
                 pending: "Ausstehend...",
-                viewImage: "Ansehen"
+                viewImage: "Ansehen",
+                searchPlaceholder: "Suche nach Bag ID, Datum, Version, Verpacker, Block..."
             }
         };
 
+        // Packer profiles (shared with add page)
+        const PACKERS = {
+            "Schnuartz": {
+                name: "Schnuartz",
+                description: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
+                twitter: "https://x.com/schnuartz"
+            }
+        };
+
+        // Firmware version links
+        const FIRMWARE_LINKS = {
+            "v1.5.7": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.7",
+            "v1.5.6": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.6",
+            "v1.5.5": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.5",
+            "v1.6.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.6.0",
+            "v1.7.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.7.0",
+            "v1.8.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.8.0",
+            "v1.9.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.9.0",
+            "v2.0.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v2.0.0"
+        };
+
+        // Get firmware link for a version (supports partial matches)
+        function getFirmwareLink(version) {
+            if (!version || version === 'Unknown') return null;
+            // Direct match
+            if (FIRMWARE_LINKS[version]) return FIRMWARE_LINKS[version];
+            // Try with 'v' prefix
+            if (FIRMWARE_LINKS['v' + version]) return FIRMWARE_LINKS['v' + version];
+            // Fallback to releases page
+            return 'https://github.com/cryptoadvance/specter-diy/releases';
+        }
+
         let currentLanguage = localStorage.getItem('language') || 'en';
+        let searchQuery = '';
 
         function setLanguage(lang) {
             currentLanguage = lang;
@@ -337,6 +405,14 @@
                 const key = el.getAttribute('data-i18n');
                 if (t[key]) {
                     el.textContent = t[key];
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-placeholder-i18n]').forEach(el => {
+                const key = el.getAttribute('data-placeholder-i18n');
+                if (t[key]) {
+                    el.placeholder = t[key];
                 }
             });
 
@@ -432,6 +508,28 @@
             return sorted;
         }
 
+        function filterProofs(proofs) {
+            if (!searchQuery.trim()) return proofs;
+            const query = searchQuery.toLowerCase().trim();
+            return proofs.filter(proof => {
+                let version = '', packer = '', date = '', blockHeight = '';
+                try {
+                    const data = JSON.parse(proof.dataString);
+                    version = (data.version || '').toLowerCase();
+                    packer = (data.packer || '').toLowerCase();
+                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US').toLowerCase() : '';
+                } catch (e) {}
+                blockHeight = proof.blockHeight ? String(proof.blockHeight).toLowerCase() : '';
+                const bagId = (proof.bagId || '').toLowerCase();
+
+                return bagId.includes(query) ||
+                       date.includes(query) ||
+                       version.includes(query) ||
+                       packer.includes(query) ||
+                       blockHeight.includes(query);
+            });
+        }
+
         function renderProofs() {
             const tbody = document.getElementById('proofsTableBody');
             const emptyState = document.getElementById('emptyState');
@@ -444,7 +542,13 @@
             }
 
             emptyState.classList.add('hidden');
-            const sorted = sortProofs(allProofs);
+            const filtered = filterProofs(allProofs);
+            const sorted = sortProofs(filtered);
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-specter-textMuted">${currentLanguage === 'de' ? 'Keine Ergebnisse gefunden' : 'No results found'}</td></tr>`;
+                return;
+            }
 
             tbody.innerHTML = sorted.map((proof, index) => {
                 // Parse dataString to get version and packer
@@ -455,6 +559,17 @@
                     packer = data.packer || 'Unknown';
                     date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
                 } catch (e) {}
+
+                // Version with link to firmware
+                const firmwareLink = getFirmwareLink(version);
+                const versionHtml = firmwareLink
+                    ? `<a href="${firmwareLink}" target="_blank" rel="noopener" class="text-specter-cyan hover:underline">${version}</a>`
+                    : `<span class="text-white">${version}</span>`;
+
+                // Packer with profile link
+                const packerHtml = PACKERS[packer]
+                    ? `<button onclick="showPackerModal('${packer}')" class="text-specter-cyan hover:underline font-semibold">${packer}</button>`
+                    : `<span class="text-specter-textMuted">${packer}</span>`;
 
                 // Proof badge
                 let proofBadge;
@@ -489,8 +604,8 @@
                     <tr class="hover:bg-specter-dark/50 transition">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${proof.bagId}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-textMuted">${date}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${version}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-cyan">${packer}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${versionHtml}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">${proofBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">${imageBtn}</td>
                     </tr>
@@ -500,11 +615,18 @@
 
         document.getElementById('sortSelect').addEventListener('change', renderProofs);
 
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderProofs();
+        });
+
         // ===========================================
         // Modals
         // ===========================================
         function showTimestampModal(index) {
-            const proof = sortProofs(allProofs)[index];
+            const filtered = filterProofs(allProofs);
+            const proof = sortProofs(filtered)[index];
             if (!proof) return;
 
             currentTimestampData = proof;
@@ -536,6 +658,16 @@
                 blockHeightRow.style.display = 'none';
                 blockTimeRow.classList.add('hidden');
                 blockTimeRow.style.display = 'none';
+            }
+
+            // Show/hide image download button
+            const downloadImageBtn = document.getElementById('downloadTimestampImage');
+            if (proof.imageData) {
+                downloadImageBtn.classList.remove('hidden');
+                downloadImageBtn.style.display = 'flex';
+            } else {
+                downloadImageBtn.classList.add('hidden');
+                downloadImageBtn.style.display = 'none';
             }
 
             document.getElementById('timestampModal').classList.remove('hidden');
@@ -570,6 +702,16 @@
             URL.revokeObjectURL(url);
         }
 
+        function downloadTimestampImage() {
+            if (!currentTimestampData || !currentTimestampData.imageData) return;
+            const a = document.createElement('a');
+            a.href = currentTimestampData.imageData;
+            a.download = `bag_${currentTimestampData.bagId}_timestamped.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         function verifyExternal() {
             window.open('https://opentimestamps.org/', '_blank');
         }
@@ -586,12 +728,31 @@
             document.getElementById('imageModal').style.display = 'none';
         }
 
+        // Packer Modal
+        function showPackerModal(packerName) {
+            const packer = PACKERS[packerName];
+            if (!packer) return;
+            document.getElementById('packerName').textContent = packer.name;
+            document.getElementById('packerDescription').textContent = packer.description;
+            document.getElementById('packerTwitter').href = packer.twitter;
+            document.getElementById('packerModal').classList.remove('hidden');
+            document.getElementById('packerModal').style.display = 'flex';
+        }
+
+        function closePackerModal() {
+            document.getElementById('packerModal').classList.add('hidden');
+            document.getElementById('packerModal').style.display = 'none';
+        }
+
         // Close modals on backdrop click
         document.getElementById('timestampModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('timestampModal')) closeTimestampModal();
         });
         document.getElementById('imageModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('imageModal')) closeImageModal();
+        });
+        document.getElementById('packerModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('packerModal')) closePackerModal();
         });
 
         // ===========================================

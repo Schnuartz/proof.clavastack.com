@@ -238,6 +238,29 @@
             }
         };
 
+        // Firmware version links
+        const FIRMWARE_LINKS = {
+            "v1.5.7": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.7",
+            "v1.5.6": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.6",
+            "v1.5.5": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.5.5",
+            "v1.6.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.6.0",
+            "v1.7.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.7.0",
+            "v1.8.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.8.0",
+            "v1.9.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v1.9.0",
+            "v2.0.0": "https://github.com/cryptoadvance/specter-diy/releases/tag/v2.0.0"
+        };
+
+        // Get firmware link for a version (supports partial matches)
+        function getFirmwareLink(version) {
+            if (!version || version === 'Unknown') return null;
+            // Direct match
+            if (FIRMWARE_LINKS[version]) return FIRMWARE_LINKS[version];
+            // Try with 'v' prefix
+            if (FIRMWARE_LINKS['v' + version]) return FIRMWARE_LINKS['v' + version];
+            // Fallback to releases page
+            return 'https://github.com/cryptoadvance/specter-diy/releases';
+        }
+
         // i18n
         const translations = {
             en: {
@@ -827,10 +850,16 @@
                     proofHtml = '<span class="text-specter-textMuted text-xs">-</span>';
                 }
 
+                // Version with link to firmware
+                const firmwareLink = getFirmwareLink(item.version);
+                const versionHtml = firmwareLink
+                    ? `<a href="${firmwareLink}" target="_blank" rel="noopener" class="text-specter-cyan hover:underline">${item.version || 'Unknown'}</a>`
+                    : `<span class="text-white">${item.version || 'Unknown'}</span>`;
+
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${item.bagId || 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-specter-textMuted">${item.dateFormatted || '---'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${item.version || 'Unknown'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${versionHtml}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">${packerHtml}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">${proofHtml}</td>
                 `;
