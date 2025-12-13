@@ -132,21 +132,39 @@ https://secure-ai-proxy-server-187831042201.europe-west1.run.app
 
 ## Deployment
 
-### Docker Build
+### Automatisches Deployment via GitHub
+
+Push auf `main` Branch deployt automatisch:
+- **Frontend**: Hostinger (statische Dateien werden automatisch aktualisiert)
+- **Backend**: Google Cloud Build triggert automatisch bei Push
+
+```bash
+git add .
+git commit -m "feat: Your changes"
+git push origin main
+```
+
+### Tailwind CSS Build
+
+**WICHTIG**: Bei CSS-Änderungen vor dem Commit ausführen:
+
+```bash
+npm run build:css
+```
+
+### Docker Build (manuell)
 
 ```bash
 docker build -t secure-ai-proxy-server .
 ```
 
-### Cloud Run Deployment
+### Cloud Run Deployment (manuell)
 
 Automatisch via `cloudbuild.yaml`:
 
 1. **Build**: Docker Image erstellen
 2. **Push**: Image zu Google Container Registry
 3. **Deploy**: Deployment auf Cloud Run (europe-west1)
-
-### Manuelles Deployment
 
 ```bash
 gcloud builds submit --config cloudbuild.yaml
@@ -169,6 +187,12 @@ gcloud builds submit --config cloudbuild.yaml
 npm install
 ```
 
+### Tailwind CSS Watch Mode
+
+```bash
+npm run watch:css
+```
+
 ### Server starten
 
 ```bash
@@ -184,7 +208,7 @@ Server läuft auf `http://localhost:8080`
 
 ### Frontend testen
 
-`index.html` direkt im Browser öffnen oder mit Live Server.
+`index.html` direkt im Browser öffnen oder mit VSCode Live Server (Port 5500).
 
 ---
 
@@ -207,7 +231,7 @@ Triggert bei Push auf `main`/`master` oder Pull Requests:
 
 - **API-Schlüssel**: Nur in Cloud Run Environment, nie im Code
 - **Token-Auth**: Alle API-Calls erfordern gültigen Token
-- **CORS**: Aktuell `*` (für Produktion einschränken)
+- **CORS**: Eingeschränkt auf `proof.clavastack.com` und localhost
 - **Payload-Limit**: 50MB für große Bilder
 
 ---
