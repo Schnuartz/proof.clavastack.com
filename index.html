@@ -39,12 +39,12 @@
                             </button>
                         </div>
                     </div>
-                    <!-- Add New Button -->
-                    <a href="/add/" class="px-4 py-2 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center gap-2">
+                    <!-- ClavaStack Link -->
+                    <a href="https://clavastack.com/" target="_blank" rel="noopener" class="px-4 py-2 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                         </svg>
-                        <span data-i18n="addNew">Add New</span>
+                        <span data-i18n="visitShop">Visit Shop</span>
                     </a>
                 </div>
             </div>
@@ -90,11 +90,11 @@
                         </div>
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                             <div class="relative">
-                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-specter-textMuted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="absolute left-3 top-2 w-5 h-5 text-specter-textMuted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <input type="text" id="searchInput"
-                                    class="w-full sm:w-48 pl-10 pr-3 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none">
+                                    class="w-full sm:w-48 pl-11 pr-3 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none">
                             </div>
                             <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
                                 <option value="date-desc" data-i18n="sortNewest">Newest first</option>
@@ -129,13 +129,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     <h3 class="text-lg font-semibold mb-2" data-i18n="emptyTitle">No proofs yet</h3>
-                    <p class="text-specter-textMuted mb-4" data-i18n="emptyDescription">Start by adding your first packaging proof.</p>
-                    <a href="/add/" class="inline-flex items-center gap-2 px-6 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span data-i18n="addFirstProof">Add First Proof</span>
-                    </a>
+                    <p class="text-specter-textMuted mb-4" data-i18n="emptyDescription2">Proofs will appear here once packages are verified.</p>
                 </div>
             </div>
 
@@ -271,7 +265,7 @@
         // ===========================================
         const translations = {
             en: {
-                addNew: "Add New",
+                visitShop: "Visit Shop",
                 heroSubtitle: "packaged by ClavaStack",
                 heroSlogan: "Trust the Source, Not the Route",
                 heroDescription: "Every Specter Hardware Wallet packaged by ClavaStack is cryptographically timestamped on the Bitcoin blockchain. This provides immutable proof of packaging integrity that can be independently verified by anyone.",
@@ -289,8 +283,7 @@
                 colProof: "Blockchain Proof",
                 colImage: "Image",
                 emptyTitle: "No proofs yet",
-                emptyDescription: "Start by adding your first packaging proof.",
-                addFirstProof: "Add First Proof",
+                emptyDescription2: "Proofs will appear here once packages are verified.",
                 exportCSV: "Export as CSV",
                 modalTitle: "Blockchain Timestamp Proof",
                 verifiedTitle: "Verified on Bitcoin Blockchain",
@@ -313,7 +306,7 @@
                 searchPlaceholder: "Search by Bag ID, Date, Version, Packer, Block..."
             },
             de: {
-                addNew: "Hinzufugen",
+                visitShop: "Zum Shop",
                 heroSubtitle: "verpackt von ClavaStack",
                 heroSlogan: "Vertraue der Quelle, nicht dem Weg",
                 heroDescription: "Jede von ClavaStack verpackte Specter Hardware Wallet wird kryptografisch auf der Bitcoin-Blockchain mit einem Zeitstempel versehen. Dies bietet einen unveranderlichen Nachweis der Verpackungsintegritat, der von jedem unabhangig uberpruft werden kann.",
@@ -331,8 +324,7 @@
                 colProof: "Blockchain Nachweis",
                 colImage: "Bild",
                 emptyTitle: "Noch keine Nachweise",
-                emptyDescription: "Fugen Sie Ihren ersten Verpackungsnachweis hinzu.",
-                addFirstProof: "Ersten Nachweis hinzufugen",
+                emptyDescription2: "Nachweise erscheinen hier, sobald Pakete verifiziert sind.",
                 exportCSV: "Als CSV exportieren",
                 modalTitle: "Blockchain Zeitstempel-Nachweis",
                 verifiedTitle: "Verifiziert auf der Bitcoin Blockchain",
@@ -360,7 +352,10 @@
         const PACKERS = {
             "Schnuartz": {
                 name: "Schnuartz",
-                description: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
+                description: {
+                    en: "Schnuartz founded ClavaStack, a retailer for Specter wallets, and produced over 90 german tutorials for the EINUNDZWANZIG channel. He is the first president of the Specter Association.",
+                    de: "Schnuartz hat ClavaStack gegründet, einen Händler für Specter Wallets, und über 90 deutsche Tutorials für den EINUNDZWANZIG Kanal produziert. Er ist der erste Präsident des Specter Vereins."
+                },
                 twitter: "https://x.com/schnuartz"
             }
         };
@@ -730,7 +725,11 @@
             const packer = PACKERS[packerName];
             if (!packer) return;
             document.getElementById('packerName').textContent = packer.name;
-            document.getElementById('packerDescription').textContent = packer.description;
+            // Use description based on current language
+            const description = typeof packer.description === 'object'
+                ? (packer.description[currentLanguage] || packer.description.en)
+                : packer.description;
+            document.getElementById('packerDescription').textContent = description;
             document.getElementById('packerTwitter').href = packer.twitter;
             document.getElementById('packerModal').classList.remove('hidden');
             document.getElementById('packerModal').style.display = 'flex';
