@@ -589,22 +589,35 @@
         }
 
         async function sha256Hash(data) {
-            const encoder = new TextEncoder();
-            const dataBuffer = encoder.encode(data);
+            // Accept either string or ArrayBuffer
+            let dataBuffer;
+            if (data instanceof ArrayBuffer) {
+                dataBuffer = data;
+            } else if (data instanceof Uint8Array) {
+                dataBuffer = data.buffer;
+            } else {
+                const encoder = new TextEncoder();
+                dataBuffer = encoder.encode(data);
+            }
             const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
             return new Uint8Array(hashBuffer);
         }
 
-        async function createTimestamp(bagData) {
-            try {
-                const dataString = JSON.stringify({
-                    bagId: bagData.bagId,
-                    version: bagData.version,
-                    packer: bagData.packer,
-                    date: bagData.date
-                });
+        // Read file as ArrayBuffer (for hashing original bytes)
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
 
-                const hashBytes = await sha256Hash(dataString);
+        async function createTimestamp(bagData, imageBuffer) {
+            try {
+                // Hash the original image file (not metadata!)
+                // This ensures the .ots file can verify the exact image
+                const hashBytes = await sha256Hash(imageBuffer);
                 const hashHex = bytesToHex(hashBytes);
 
                 const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
@@ -619,7 +632,6 @@
                 return {
                     hash: hashHex,
                     otsData: otsHex,
-                    dataString: dataString,
                     createdAt: new Date().toISOString(),
                     status: 'pending',
                     blockHeight: null,
@@ -853,9 +865,13 @@
                 // Step 2: Create timestamps and upload to Cloud Storage
                 setProcessingState(true, 'timestamping');
 
+                // Read the original image as ArrayBuffer for hashing
+                // This ensures the hash matches the exact file that gets uploaded
+                const imageBuffer = await readFileAsArrayBuffer(file);
+
                 for (const item of resultsWithDate) {
-                    // Create OpenTimestamps proof
-                    const tsInfo = await createTimestamp(item);
+                    // Create OpenTimestamps proof from the original image
+                    const tsInfo = await createTimestamp(item, imageBuffer);
                     if (tsInfo) {
                         item.timestamp = tsInfo;
                     }
