@@ -242,3 +242,26 @@ Triggert bei Push auf `main`/`master` oder Pull Requests:
 - **Stateless**: Keine Datenbank, jede Anfrage ist unabhängig
 - **Gemini Model**: `gemini-2.5-flash` für schnelle Bildanalyse
 - **Response Format**: JSON wird von Gemini erzwungen
+
+---
+
+## Troubleshooting
+
+### Nach Deployment: Änderungen nicht sichtbar?
+
+**Browser-Cache leeren!** Nach jedem Deployment:
+
+```
+Windows/Linux: Ctrl + Shift + R
+Mac: Cmd + Shift + R
+```
+
+Oder in Chrome DevTools: Network Tab → "Disable cache" aktivieren.
+
+### Bekannte Third-Party Fehler (ignorieren)
+
+Diese Fehler in der Browser-Konsole sind **normal** und können nicht behoben werden:
+
+1. **OpenTimestamps CORS-Fehler**: Einige Calendar-Server (`ots.btc.catallaxy.com`) blockieren Browser-Requests. Die Timestamps funktionieren trotzdem über andere Server.
+
+2. **Browser-Extension Fehler** (`content_script.js`): Stammen von installierten Browser-Erweiterungen, nicht vom Projekt.
