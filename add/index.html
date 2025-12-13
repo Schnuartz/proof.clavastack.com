@@ -89,22 +89,39 @@
         <div id="verification-area" class="bg-specter-card border border-specter-border rounded-2xl p-6 opacity-30 pointer-events-none transition duration-500">
             <h2 class="text-xl font-bold mb-4" data-i18n="uploadTitle">2. Image Upload & Analysis</h2>
 
-            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="displayFileName(this)">
-            <label for="imageInput" id="fileLabel" class="file-upload-label">
-                <svg class="w-12 h-12 mx-auto text-specter-cyan mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                </svg>
-                <span class="font-semibold text-specter-text block mb-2" data-i18n="uploadLabel">Select image file</span>
-                <p id="fileNameDisplay" class="text-sm text-specter-textMuted"></p>
-            </label>
+            <!-- Upload Options: File or Camera -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <!-- File Upload -->
+                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="displayFileName(this)">
+                <label for="imageInput" id="fileLabel" class="file-upload-label cursor-pointer border-2 border-dashed border-specter-border rounded-xl p-6 text-center hover:border-specter-cyan transition block">
+                    <svg class="w-10 h-10 mx-auto text-specter-cyan mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    <span class="font-semibold text-specter-text block mb-1" data-i18n="uploadLabel">Select image file</span>
+                    <p class="text-xs text-specter-textMuted" data-i18n="uploadHint">or drag & drop</p>
+                </label>
+
+                <!-- Take Picture Button -->
+                <button onclick="openCamera()" id="cameraButton" class="border-2 border-dashed border-specter-border rounded-xl p-6 text-center hover:border-specter-cyan transition">
+                    <svg class="w-10 h-10 mx-auto text-specter-cyan mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="font-semibold text-specter-text block mb-1" data-i18n="takePicture">Take Picture</span>
+                    <p class="text-xs text-specter-textMuted" data-i18n="cameraHint">use camera</p>
+                </button>
+            </div>
+
+            <!-- Selected File Name -->
+            <p id="fileNameDisplay" class="text-sm text-specter-textMuted text-center mb-4"></p>
 
             <!-- Image Preview -->
-            <div id="imagePreview" class="hidden mt-4">
+            <div id="imagePreview" class="hidden mb-4">
                 <img id="previewImage" src="" alt="Preview" class="max-h-64 mx-auto rounded-xl">
             </div>
 
             <button id="verifyButton" disabled
-                    class="w-full mt-6 px-6 py-4 bg-specter-cyan text-specter-darker font-bold rounded-xl hover:bg-specter-cyanDark transition disabled:bg-specter-border disabled:text-specter-textMuted disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    class="w-full px-6 py-4 bg-specter-cyan text-specter-darker font-bold rounded-xl hover:bg-specter-cyanDark transition disabled:bg-specter-border disabled:text-specter-textMuted disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 <span id="buttonText" data-i18n="verifyButton">Analyze Bags</span>
                 <svg id="loadingSpinner" class="animate-spin h-5 w-5 hidden" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -235,6 +252,61 @@
         </div>
     </div>
 
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-6">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-bold text-white" data-i18n="cameraTitle">Take Picture</h3>
+                <button onclick="closeCamera()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <!-- Camera Preview -->
+            <div class="relative bg-black rounded-xl overflow-hidden mb-4">
+                <video id="cameraPreview" autoplay playsinline class="w-full h-auto max-h-[60vh] object-contain"></video>
+                <canvas id="cameraCanvas" class="hidden"></canvas>
+
+                <!-- Camera loading indicator -->
+                <div id="cameraLoading" class="absolute inset-0 flex items-center justify-center bg-specter-darker">
+                    <div class="text-center">
+                        <svg class="animate-spin h-10 w-10 mx-auto text-specter-cyan mb-3" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="text-specter-textMuted" data-i18n="cameraLoading">Starting camera...</p>
+                    </div>
+                </div>
+
+                <!-- Camera error -->
+                <div id="cameraError" class="hidden absolute inset-0 flex items-center justify-center bg-specter-darker">
+                    <div class="text-center p-6">
+                        <svg class="w-12 h-12 mx-auto text-specter-error mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <p class="text-specter-error font-semibold mb-2" data-i18n="cameraErrorTitle">Camera Error</p>
+                        <p id="cameraErrorMsg" class="text-specter-textMuted text-sm"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="flex gap-3">
+                <button onclick="switchCamera()" id="switchCameraBtn" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span data-i18n="switchCamera">Switch Camera</span>
+                </button>
+                <button onclick="capturePhoto()" id="captureBtn" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span data-i18n="capture">Capture</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app";
         const PROXY_API_URL = `${API_BASE_URL}/api/verify-serial-number`;
@@ -282,6 +354,9 @@
                 tokenSaved: "Token Saved",
                 uploadTitle: "2. Image Upload & Analysis",
                 uploadLabel: "Select image file",
+                uploadHint: "or drag & drop",
+                takePicture: "Take Picture",
+                cameraHint: "use camera",
                 verifyButton: "Analyze Bags",
                 analyzing: "Analyzing...",
                 timestamping: "Creating Blockchain Timestamps...",
@@ -312,7 +387,16 @@
                 downloadOts: "Download .ots",
                 verifyExternal: "Verify Externally",
                 timestamped: "Timestamped",
-                pending: "Pending..."
+                pending: "Pending...",
+                cameraTitle: "Take Picture",
+                cameraLoading: "Starting camera...",
+                cameraErrorTitle: "Camera Error",
+                cameraErrorPermission: "Camera access denied. Please allow camera access in your browser settings.",
+                cameraErrorNotFound: "No camera found on this device.",
+                cameraErrorGeneric: "Could not access camera. Please try again.",
+                switchCamera: "Switch Camera",
+                capture: "Capture",
+                photoCaptured: "Photo captured"
             },
             de: {
                 admin: "Admin",
@@ -324,6 +408,9 @@
                 tokenSaved: "Token gespeichert",
                 uploadTitle: "2. Bild-Upload & Analyse",
                 uploadLabel: "Bilddatei auswahlen",
+                uploadHint: "oder Drag & Drop",
+                takePicture: "Foto aufnehmen",
+                cameraHint: "Kamera nutzen",
                 verifyButton: "Bags analysieren",
                 analyzing: "Analysiere...",
                 timestamping: "Erstelle Blockchain-Timestamps...",
@@ -354,7 +441,16 @@
                 downloadOts: ".ots herunterladen",
                 verifyExternal: "Extern verifizieren",
                 timestamped: "Zeitgestempelt",
-                pending: "Ausstehend..."
+                pending: "Ausstehend...",
+                cameraTitle: "Foto aufnehmen",
+                cameraLoading: "Kamera wird gestartet...",
+                cameraErrorTitle: "Kamera-Fehler",
+                cameraErrorPermission: "Kamerazugriff verweigert. Bitte erlauben Sie den Kamerazugriff in Ihren Browser-Einstellungen.",
+                cameraErrorNotFound: "Keine Kamera auf diesem Gerat gefunden.",
+                cameraErrorGeneric: "Kamera konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+                switchCamera: "Kamera wechseln",
+                capture: "Aufnehmen",
+                photoCaptured: "Foto aufgenommen"
             }
         };
 
@@ -363,6 +459,11 @@
         let currentResults = [];
         let currentTimestampData = null;
         let currentImageData = null;
+
+        // Camera variables
+        let cameraStream = null;
+        let currentFacingMode = 'environment'; // 'environment' = back camera, 'user' = front camera
+        let capturedFile = null;
 
         function setLanguage(lang) {
             currentLanguage = lang;
@@ -430,7 +531,7 @@
                 authButton.textContent = translations[currentLanguage].tokenSaved;
                 authButton.disabled = true;
                 authTokenInput.disabled = true;
-                verifyButton.disabled = !imageInput.files.length;
+                updateVerifyButton();
                 // Show admin link when authenticated
                 document.getElementById('adminLink').classList.remove('hidden');
                 document.getElementById('adminLink').style.display = 'flex';
@@ -438,7 +539,7 @@
         }
 
         imageInput.addEventListener('change', () => {
-            verifyButton.disabled = !isAuthenticated || !imageInput.files.length;
+            updateVerifyButton();
         });
 
         function displayFileName(input) {
@@ -446,6 +547,9 @@
             const fileLabel = document.getElementById('fileLabel');
             const preview = document.getElementById('imagePreview');
             const previewImg = document.getElementById('previewImage');
+
+            // Clear any captured file when selecting a new file
+            capturedFile = null;
 
             if (input.files.length > 0) {
                 const file = input.files[0];
@@ -459,17 +563,179 @@
                     preview.classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
+                updateVerifyButton();
             } else {
                 display.textContent = '';
                 fileLabel.classList.remove('active');
                 preview.classList.add('hidden');
                 currentImageData = null;
+                updateVerifyButton();
             }
         }
 
+        // ===========================================
+        // Camera Functions
+        // ===========================================
+        async function openCamera() {
+            const t = translations[currentLanguage];
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraPreview');
+            const loading = document.getElementById('cameraLoading');
+            const errorDiv = document.getElementById('cameraError');
+
+            // Show modal
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            loading.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+
+            try {
+                // Request camera access
+                const constraints = {
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraStream;
+                await video.play();
+
+                // Hide loading when video starts
+                loading.classList.add('hidden');
+
+            } catch (error) {
+                console.error('Camera error:', error);
+                loading.classList.add('hidden');
+                errorDiv.classList.remove('hidden');
+
+                const errorMsg = document.getElementById('cameraErrorMsg');
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    errorMsg.textContent = t.cameraErrorPermission;
+                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                    errorMsg.textContent = t.cameraErrorNotFound;
+                } else {
+                    errorMsg.textContent = t.cameraErrorGeneric;
+                }
+            }
+        }
+
+        function closeCamera() {
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraPreview');
+
+            // Stop camera stream
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            video.srcObject = null;
+
+            // Hide modal
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        async function switchCamera() {
+            // Toggle facing mode
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+            // Close current stream and reopen with new facing mode
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+
+            const video = document.getElementById('cameraPreview');
+            const loading = document.getElementById('cameraLoading');
+            const errorDiv = document.getElementById('cameraError');
+
+            loading.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraStream;
+                await video.play();
+                loading.classList.add('hidden');
+
+            } catch (error) {
+                console.error('Camera switch error:', error);
+                // Fallback: try without facingMode constraint
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = cameraStream;
+                    await video.play();
+                    loading.classList.add('hidden');
+                } catch (fallbackError) {
+                    loading.classList.add('hidden');
+                    errorDiv.classList.remove('hidden');
+                }
+            }
+        }
+
+        function capturePhoto() {
+            const t = translations[currentLanguage];
+            const video = document.getElementById('cameraPreview');
+            const canvas = document.getElementById('cameraCanvas');
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImage');
+            const display = document.getElementById('fileNameDisplay');
+
+            // Set canvas size to video dimensions
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // Draw video frame to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            // Convert canvas to blob/file
+            canvas.toBlob((blob) => {
+                // Create a File object from the blob
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const filename = `photo_${timestamp}.jpg`;
+                capturedFile = new File([blob], filename, { type: 'image/jpeg' });
+
+                // Show preview
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                previewImg.src = dataUrl;
+                currentImageData = dataUrl;
+                preview.classList.remove('hidden');
+                display.textContent = `${t.photoCaptured}: ${filename}`;
+
+                // Enable verify button
+                updateVerifyButton();
+
+                // Close camera modal
+                closeCamera();
+
+            }, 'image/jpeg', 0.9);
+        }
+
+        function updateVerifyButton() {
+            const hasFile = imageInput.files.length > 0 || capturedFile !== null;
+            verifyButton.disabled = !isAuthenticated || !hasFile;
+        }
+
+        // Close camera modal on backdrop click
+        document.getElementById('cameraModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('cameraModal')) closeCamera();
+        });
+
         function setProcessingState(isProcessing, statusKey = 'analyzing') {
             const t = translations[currentLanguage];
-            verifyButton.disabled = isProcessing || !isAuthenticated || !imageInput.files.length;
+            const hasFile = imageInput.files.length > 0 || capturedFile !== null;
+            verifyButton.disabled = isProcessing || !isAuthenticated || !hasFile;
             verificationArea.classList.toggle('pointer-events-none', isProcessing);
             document.getElementById('buttonText').textContent = isProcessing ? t[statusKey] : t.verifyButton;
             document.getElementById('loadingSpinner').classList.toggle('hidden', !isProcessing);
@@ -815,7 +1081,8 @@
         async function processVerification() {
             if (!isAuthenticated) return;
 
-            const file = imageInput.files[0];
+            // Use either uploaded file or captured photo
+            const file = imageInput.files[0] || capturedFile;
             if (!file) return;
 
             setProcessingState(true, 'analyzing');

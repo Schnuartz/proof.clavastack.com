@@ -177,46 +177,11 @@
             }
         };
 
+        const API_BASE_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app";
+
         let currentLanguage = localStorage.getItem('language') || 'en';
         let allProofs = [];
         let selectedBagIds = new Set();
-
-        // ===========================================
-        // IndexedDB for Image Storage
-        // ===========================================
-        const DB_NAME = 'ClavaStackProofDB';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'images';
-
-        function openImageDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'bagId' });
-                    }
-                };
-            });
-        }
-
-        async function deleteImage(bagId) {
-            try {
-                const db = await openImageDB();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    store.delete(bagId);
-                    tx.oncomplete = () => resolve(true);
-                    tx.onerror = () => reject(tx.error);
-                });
-            } catch (error) {
-                console.error('Error deleting image:', error);
-                return false;
-            }
-        }
 
         // ===========================================
         // Language
@@ -245,16 +210,20 @@
         }
 
         // ===========================================
-        // Load and Render Proofs
+        // Load and Render Proofs from API
         // ===========================================
-        function loadProofs() {
-            const stored = localStorage.getItem('bag_timestamps');
-            if (stored) {
-                const timestamps = JSON.parse(stored);
-                allProofs = Object.keys(timestamps).map(key => ({
-                    bagId: key.replace('bag_', ''),
-                    ...timestamps[key]
-                }));
+        async function loadProofs() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/proofs`);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                const data = await response.json();
+                allProofs = data.proofs || [];
+                console.log(`Loaded ${allProofs.length} proofs from API`);
+            } catch (error) {
+                console.error("Error loading proofs:", error);
+                allProofs = [];
             }
             renderProofs();
         }
@@ -273,13 +242,10 @@
             emptyState.classList.add('hidden');
 
             tbody.innerHTML = allProofs.map(proof => {
-                let version = 'Unknown', packer = 'Unknown', date = '---';
-                try {
-                    const data = JSON.parse(proof.dataString);
-                    version = data.version || 'Unknown';
-                    packer = data.packer || 'Unknown';
-                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
-                } catch (e) {}
+                // Data is now directly on the proof object (from Cloud Storage)
+                const version = proof.version || 'Unknown';
+                const packer = proof.packer || 'Unknown';
+                const date = proof.date ? new Date(proof.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
 
                 const statusBadge = proof.status === 'verified'
                     ? `<span class="inline-flex items-center px-2 py-1 bg-specter-success/20 text-specter-success rounded text-xs font-semibold">${t.verified}</span>`
@@ -350,22 +316,36 @@
         }
 
         async function confirmDelete() {
-            // Delete from localStorage
-            const stored = localStorage.getItem('bag_timestamps');
-            if (stored) {
-                const timestamps = JSON.parse(stored);
-                for (const bagId of selectedBagIds) {
-                    delete timestamps[`bag_${bagId}`];
-                    // Delete image from IndexedDB
-                    await deleteImage(bagId);
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                alert('Authentication required');
+                return;
+            }
+
+            // Delete each selected proof via API
+            for (const bagId of selectedBagIds) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/proofs/${bagId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-Auth-Token': token
+                        }
+                    });
+
+                    if (!response.ok) {
+                        console.error(`Failed to delete proof ${bagId}: ${response.status}`);
+                    } else {
+                        console.log(`Deleted proof ${bagId}`);
+                    }
+                } catch (error) {
+                    console.error(`Error deleting proof ${bagId}:`, error);
                 }
-                localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
             }
 
             // Reset selection and reload
             selectedBagIds.clear();
             closeConfirmModal();
-            loadProofs();
+            await loadProofs();
             updateSelectionUI();
         }
 
