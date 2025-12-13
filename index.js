@@ -28,10 +28,28 @@ const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 // --- Middleware ---
 console.log("Configuring middleware ...");
-// 1. CORS-Konfiguration: Erlaubt Anfragen von JEDER Domain (*).
-// Dies ist für das Debugging am einfachsten.
+// 1. CORS-Konfiguration: Erlaubt Anfragen nur von erlaubten Domains.
+const allowedOrigins = [
+    'https://proof.clavastack.com',
+    'https://www.proof.clavastack.com',
+    'http://localhost:3000',  // Für lokale Entwicklung
+    'http://localhost:8080',  // Für lokale Entwicklung
+    'http://127.0.0.1:5500',  // VSCode Live Server
+    'http://localhost:5500'   // VSCode Live Server
+];
+
 app.use(cors({
-    origin: '*',
+    origin: function(origin, callback) {
+        // Erlaube Anfragen ohne Origin (z.B. curl, Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked request from origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-Auth-Token'],
     credentials: false

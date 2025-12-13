@@ -125,7 +125,7 @@ proof.clavastack.com/
 ### Backend URL
 
 ```
-https://backend-proof-clavastack-com-205299921692.europe-west1.run.app
+https://secure-ai-proxy-server-187831042201.europe-west1.run.app
 ```
 
 ---

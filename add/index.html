@@ -5,57 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Proof - ClavaStack</title>
     <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../dist/output.css">
     <script src="https://opentimestamps.org/assets/javascripts/vendor/opentimestamps.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        specter: {
-                            dark: '#0a0e17',
-                            darker: '#060810',
-                            card: '#111827',
-                            border: '#1f2937',
-                            cyan: '#00d4ff',
-                            cyanDark: '#0891b2',
-                            text: '#e5e7eb',
-                            textMuted: '#9ca3af',
-                            success: '#10b981',
-                            warning: '#f59e0b',
-                            error: '#ef4444'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(180deg, #0a0e17 0%, #060810 100%);
-            min-height: 100vh;
-        }
-        .file-upload-label {
-            display: block;
-            cursor: pointer;
-            padding: 2rem;
-            border: 2px dashed #1f2937;
-            border-radius: 1rem;
-            background-color: #111827;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        .file-upload-label:hover {
-            border-color: #00d4ff;
-            background-color: rgba(0, 212, 255, 0.05);
-        }
-        .file-upload-label.active {
-            border-color: #00d4ff;
-            background-color: rgba(0, 212, 255, 0.1);
-        }
-    </style>
 </head>
 <body class="text-specter-text">
     <!-- Header -->
@@ -543,8 +495,8 @@
                     createdAt: new Date().toISOString(),
                     status: 'pending',
                     blockHeight: null,
-                    blockTime: null,
-                    imageData: imageData
+                    blockTime: null
+                    // Note: imageData not stored to avoid localStorage quota issues
                 };
             } catch (error) {
                 console.error('Timestamp error:', error);
@@ -554,6 +506,12 @@
 
         async function verifyTimestamp(timestampInfo) {
             try {
+                // Validate input
+                if (!timestampInfo || !timestampInfo.otsData || !timestampInfo.hash) {
+                    console.warn('Invalid timestamp info provided');
+                    return { verified: false };
+                }
+
                 const otsBytes = hexToBytes(timestampInfo.otsData);
                 const hashBytes = hexToBytes(timestampInfo.hash);
                 const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
@@ -563,17 +521,52 @@
                 );
                 const verifyResult = await OpenTimestamps.verify(detachedOts, detached);
 
-                if (verifyResult && Object.keys(verifyResult).length > 0) {
+                if (verifyResult && typeof verifyResult === 'object' && Object.keys(verifyResult).length > 0) {
                     const attestations = Object.keys(verifyResult);
-                    const firstAttestation = attestations[0];
-                    const unixTime = verifyResult[firstAttestation];
 
-                    return {
-                        verified: true,
-                        blockHeight: firstAttestation,
-                        blockTime: new Date(unixTime * 1000).toISOString(),
-                        blockTimeFormatted: new Date(unixTime * 1000).toLocaleString(currentLanguage === 'de' ? 'de-DE' : 'en-US')
-                    };
+                    // Find the first valid attestation with a proper timestamp
+                    for (const attestation of attestations) {
+                        const unixTime = verifyResult[attestation];
+
+                        // Comprehensive validation of unixTime
+                        if (unixTime === undefined || unixTime === null) continue;
+                        if (typeof unixTime !== 'number') continue;
+                        if (isNaN(unixTime) || !isFinite(unixTime)) continue;
+                        if (unixTime <= 0) continue;
+
+                        // Sanity check: timestamp should be between 2009 (Bitcoin genesis) and 2100
+                        const minTimestamp = 1230940800; // Jan 3, 2009
+                        const maxTimestamp = 4102444800; // Jan 1, 2100
+                        if (unixTime < minTimestamp || unixTime > maxTimestamp) {
+                            console.warn('Unix time out of reasonable range:', unixTime);
+                            continue;
+                        }
+
+                        const date = new Date(unixTime * 1000);
+                        if (isNaN(date.getTime())) {
+                            console.warn('Invalid date from unix time:', unixTime);
+                            continue;
+                        }
+
+                        // Additional check: ensure toISOString won't throw
+                        let isoString;
+                        try {
+                            isoString = date.toISOString();
+                        } catch (e) {
+                            console.warn('Failed to convert date to ISO string:', e);
+                            continue;
+                        }
+
+                        return {
+                            verified: true,
+                            blockHeight: attestation,
+                            blockTime: isoString,
+                            blockTimeFormatted: date.toLocaleString(currentLanguage === 'de' ? 'de-DE' : 'en-US')
+                        };
+                    }
+
+                    // No valid attestation found
+                    console.warn('No valid attestations found in verify result');
                 }
                 return { verified: false };
             } catch (error) {
@@ -598,12 +591,83 @@
         }
 
         function saveTimestamps(timestamps) {
-            localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+            try {
+                // Clean up any imageData before saving to prevent quota issues
+                const cleanedTimestamps = {};
+                for (const key in timestamps) {
+                    const ts = { ...timestamps[key] };
+                    delete ts.imageData; // Never store image data
+                    cleanedTimestamps[key] = ts;
+                }
+                localStorage.setItem('bag_timestamps', JSON.stringify(cleanedTimestamps));
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    console.error('LocalStorage quota exceeded. Attempting cleanup...');
+                    // Try to clean up old data and retry
+                    cleanupOldTimestamps();
+                    try {
+                        const cleanedTimestamps = {};
+                        for (const key in timestamps) {
+                            const ts = { ...timestamps[key] };
+                            delete ts.imageData;
+                            cleanedTimestamps[key] = ts;
+                        }
+                        localStorage.setItem('bag_timestamps', JSON.stringify(cleanedTimestamps));
+                    } catch (retryError) {
+                        console.error('Failed to save after cleanup:', retryError);
+                        alert('Storage quota exceeded. Please export your data and clear browser storage.');
+                    }
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        function cleanupOldTimestamps() {
+            // Remove any legacy imageData from existing timestamps
+            const stored = localStorage.getItem('bag_timestamps');
+            if (stored) {
+                try {
+                    const timestamps = JSON.parse(stored);
+                    let cleaned = false;
+                    for (const key in timestamps) {
+                        if (timestamps[key].imageData) {
+                            delete timestamps[key].imageData;
+                            cleaned = true;
+                        }
+                    }
+                    if (cleaned) {
+                        localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+                        console.log('Cleaned up old imageData from timestamps');
+                    }
+                } catch (e) {
+                    console.error('Error during cleanup:', e);
+                }
+            }
         }
 
         function loadTimestamps() {
             const stored = localStorage.getItem('bag_timestamps');
-            return stored ? JSON.parse(stored) : {};
+            if (!stored) return {};
+
+            try {
+                const timestamps = JSON.parse(stored);
+                // Clean up any imageData on load
+                let needsSave = false;
+                for (const key in timestamps) {
+                    if (timestamps[key].imageData) {
+                        delete timestamps[key].imageData;
+                        needsSave = true;
+                    }
+                }
+                if (needsSave) {
+                    localStorage.setItem('bag_timestamps', JSON.stringify(timestamps));
+                }
+                return timestamps;
+            } catch (e) {
+                console.error('Error parsing timestamps:', e);
+                return {};
+            }
         }
 
         // Verification
@@ -673,9 +737,9 @@
                     } else {
                         const existing = timestamps[bagKey];
 
-                        // Update image if not exists
-                        if (!existing.imageData && currentImageData) {
-                            existing.imageData = currentImageData;
+                        // Remove old imageData if present to free up localStorage space
+                        if (existing.imageData) {
+                            delete existing.imageData;
                         }
 
                         if (existing.status === 'pending') {
