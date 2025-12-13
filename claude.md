@@ -17,7 +17,7 @@ Eine **KI-gestützte Webanwendung zur Verifizierung von Manipulationsschutz-Beut
 │                     index.html                              │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                    HTTP POST + X-Auth-Token
+                    HTTP GET/POST + X-Auth-Token
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -26,11 +26,12 @@ Eine **KI-gestützte Webanwendung zur Verifizierung von Manipulationsschutz-Beut
 │                        index.js                             │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                             ▼
-                  ┌──────────────────────┐
-                  │   Google Gemini API  │
-                  │    (2.5-flash)       │
-                  └──────────────────────┘
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+   ┌──────────────────────┐     ┌──────────────────────┐
+   │   Google Gemini API  │     │  Google Cloud Storage │
+   │    (2.5-flash)       │     │  (Bilder & Proofs)    │
+   └──────────────────────┘     └──────────────────────┘
 ```
 
 ---
@@ -76,6 +77,11 @@ proof.clavastack.com/
 | Methode | Pfad | Auth | Beschreibung |
 |---------|------|------|--------------|
 | GET | `/` | Nein | Health Check |
+| GET | `/api/proofs` | **Nein** | Alle Proofs offentlich abrufen |
+| GET | `/api/proofs/:bagId` | **Nein** | Einzelnen Proof abrufen |
+| POST | `/api/proofs` | Ja | Neuen Proof mit Bild erstellen (multipart/form-data) |
+| PUT | `/api/proofs/:bagId` | Ja | Proof aktualisieren (z.B. Timestamp-Status) |
+| DELETE | `/api/proofs/:bagId` | Ja | Proof loschen |
 | POST | `/api/verify-serial-number` | Ja | Bild-Analyse via Gemini |
 
 ### Authentifizierung
@@ -83,31 +89,49 @@ proof.clavastack.com/
 - Header: `X-Auth-Token`
 - Token wird in Cloud Run Environment Variable `AUTH_TOKEN` gespeichert
 - Ohne gültigen Token: HTTP 401
+- **GET /api/proofs ist offentlich** - keine Auth erforderlich
 
-### Request Format (POST /api/verify-serial-number)
+### Request Format (POST /api/proofs)
+
+```
+Content-Type: multipart/form-data
+
+bagId: "12345"
+version: "v1.9.0"
+packer: "Schnuartz"
+date: "2024-01-15T10:30:00Z"
+hash: "sha256-hash"
+otsData: "opentimestamps-hex"
+status: "pending"
+image: [Originale Bilddatei - wird 1:1 unverandert gespeichert]
+```
+
+### Response Format (GET /api/proofs)
 
 ```json
 {
-  "data": "base64-encoded-image-data",
-  "mimeType": "image/jpeg"
+  "proofs": [
+    {
+      "bagId": "12345",
+      "version": "v1.9.0",
+      "packer": "Schnuartz",
+      "date": "2024-01-15T10:30:00Z",
+      "imageUrl": "https://storage.googleapis.com/bucket/images/12345_photo.jpg",
+      "status": "verified",
+      "blockHeight": "873421"
+    }
+  ],
+  "lastUpdated": "2024-01-15T10:30:00Z"
 }
-```
-
-### Response Format
-
-```json
-[
-  { "bagId": "12345", "serialNumber": "ABC-123-XYZ" },
-  { "bagId": "67890", "serialNumber": "DEF-456-UVW" }
-]
 ```
 
 ### Environment Variables
 
 | Variable | Beschreibung |
 |----------|--------------|
-| `GEMINI_API_KEY` | API-Schlüssel für Google Gemini |
-| `AUTH_TOKEN` | Authentifizierungs-Token für API-Zugriff |
+| `GEMINI_API_KEY` | API-Schlussel fur Google Gemini |
+| `AUTH_TOKEN` | Authentifizierungs-Token fur API-Zugriff |
+| `GCS_BUCKET_NAME` | Name des Cloud Storage Buckets (Standard: clavastack-proofs) |
 | `PORT` | Server-Port (Standard: 8080) |
 
 ---
@@ -239,9 +263,53 @@ Triggert bei Push auf `main`/`master` oder Pull Requests:
 ## Wichtige Hinweise
 
 - **Sprache**: Gesamte UI und Prompts auf Deutsch
-- **Stateless**: Keine Datenbank, jede Anfrage ist unabhängig
-- **Gemini Model**: `gemini-2.5-flash` für schnelle Bildanalyse
+- **Datenspeicherung**: Google Cloud Storage fur Bilder und Metadaten (proofs.json)
+- **Offentlicher Zugang**: GET /api/proofs ist ohne Auth zuganglich - alle Besucher sehen die Proofs
+- **Bilder unverandert**: Bilder werden 1:1 mit Originalnamen in Cloud Storage gespeichert
+- **Gemini Model**: `gemini-2.5-flash` fur schnelle Bildanalyse
 - **Response Format**: JSON wird von Gemini erzwungen
+
+---
+
+## Google Cloud Storage Setup
+
+### 1. Bucket erstellen
+
+```bash
+gsutil mb -p PROJECT_ID -l europe-west1 gs://clavastack-proofs
+```
+
+### 2. Bucket offentlich machen (fur Bild-URLs)
+
+```bash
+gsutil iam ch allUsers:objectViewer gs://clavastack-proofs
+```
+
+### 3. CORS konfigurieren
+
+Erstelle `cors.json`:
+```json
+[
+  {
+    "origin": ["https://proof.clavastack.com", "http://localhost:5500"],
+    "method": ["GET"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]
+```
+
+```bash
+gsutil cors set cors.json gs://clavastack-proofs
+```
+
+### 4. Environment Variable in Cloud Run setzen
+
+```bash
+gcloud run services update secure-ai-proxy-server \
+  --set-env-vars GCS_BUCKET_NAME=clavastack-proofs \
+  --region europe-west1
+```
 
 ---
 

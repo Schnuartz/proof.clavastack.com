@@ -469,79 +469,9 @@
         }
 
         // ===========================================
-        // IndexedDB for Image Storage
+        // API Configuration
         // ===========================================
-        const DB_NAME = 'ClavaStackProofDB';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'images';
-
-        function openImageDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'bagId' });
-                    }
-                };
-            });
-        }
-
-        async function getImage(bagId) {
-            try {
-                const db = await openImageDB();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const store = tx.objectStore(STORE_NAME);
-                    const request = store.get(bagId);
-                    request.onsuccess = () => resolve(request.result?.imageData || null);
-                    request.onerror = () => reject(request.error);
-                });
-            } catch (error) {
-                console.error('Error getting image:', error);
-                return null;
-            }
-        }
-
-        async function getAllImages() {
-            try {
-                const db = await openImageDB();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const store = tx.objectStore(STORE_NAME);
-                    const request = store.getAll();
-                    request.onsuccess = () => {
-                        const result = {};
-                        request.result.forEach(item => {
-                            result[item.bagId] = item.imageData;
-                        });
-                        resolve(result);
-                    };
-                    request.onerror = () => reject(request.error);
-                });
-            } catch (error) {
-                console.error('Error getting all images:', error);
-                return {};
-            }
-        }
-
-        async function deleteImage(bagId) {
-            try {
-                const db = await openImageDB();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    store.delete(bagId);
-                    tx.oncomplete = () => resolve(true);
-                    tx.onerror = () => reject(tx.error);
-                });
-            } catch (error) {
-                console.error('Error deleting image:', error);
-                return false;
-            }
-        }
+        const API_BASE_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app";
 
         // ===========================================
         // Proofs Data & Rendering
@@ -550,18 +480,18 @@
         let currentTimestampData = null;
 
         async function loadProofs() {
-            const stored = localStorage.getItem('bag_timestamps');
-            if (stored) {
-                const timestamps = JSON.parse(stored);
-                const images = await getAllImages();
-                allProofs = Object.keys(timestamps).map(key => {
-                    const bagId = key.replace('bag_', '');
-                    return {
-                        bagId: bagId,
-                        ...timestamps[key],
-                        imageData: images[bagId] || null
-                    };
-                });
+            try {
+                console.log("Loading proofs from API...");
+                const response = await fetch(`${API_BASE_URL}/api/proofs`);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                const data = await response.json();
+                allProofs = data.proofs || [];
+                console.log(`Loaded ${allProofs.length} proofs from API`);
+            } catch (error) {
+                console.error("Error loading proofs from API:", error);
+                allProofs = [];
             }
             renderProofs();
         }
@@ -572,10 +502,10 @@
 
             switch (sortValue) {
                 case 'date-desc':
-                    sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                    sorted.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
                     break;
                 case 'date-asc':
-                    sorted.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+                    sorted.sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
                     break;
                 case 'bagId-asc':
                     sorted.sort((a, b) => (a.bagId || '').localeCompare(b.bagId || '', undefined, {numeric: true}));
@@ -591,14 +521,10 @@
             if (!searchQuery.trim()) return proofs;
             const query = searchQuery.toLowerCase().trim();
             return proofs.filter(proof => {
-                let version = '', packer = '', date = '', blockHeight = '';
-                try {
-                    const data = JSON.parse(proof.dataString);
-                    version = (data.version || '').toLowerCase();
-                    packer = (data.packer || '').toLowerCase();
-                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US').toLowerCase() : '';
-                } catch (e) {}
-                blockHeight = proof.blockHeight ? String(proof.blockHeight).toLowerCase() : '';
+                const version = (proof.version || '').toLowerCase();
+                const packer = (proof.packer || '').toLowerCase();
+                const date = proof.date ? new Date(proof.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US').toLowerCase() : '';
+                const blockHeight = proof.blockHeight ? String(proof.blockHeight).toLowerCase() : '';
                 const bagId = (proof.bagId || '').toLowerCase();
 
                 return bagId.includes(query) ||
@@ -630,14 +556,10 @@
             }
 
             tbody.innerHTML = sorted.map((proof, index) => {
-                // Parse dataString to get version and packer
-                let version = 'Unknown', packer = 'Unknown', date = '---';
-                try {
-                    const data = JSON.parse(proof.dataString);
-                    version = data.version || 'Unknown';
-                    packer = data.packer || 'Unknown';
-                    date = data.date ? new Date(data.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
-                } catch (e) {}
+                // Get version, packer and date directly from proof object
+                const version = proof.version || 'Unknown';
+                const packer = proof.packer || 'Unknown';
+                const date = proof.date ? new Date(proof.date).toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US') : '---';
 
                 // Version with link to firmware
                 const firmwareLink = getFirmwareLink(version);
@@ -672,9 +594,9 @@
                         </button>`;
                 }
 
-                // Image button
-                const imageBtn = proof.imageData ? `
-                    <button onclick="showImageModal('${proof.imageData}')" class="text-specter-cyan hover:underline text-sm">
+                // Image button - use imageUrl from API
+                const imageBtn = proof.imageUrl ? `
+                    <button onclick="showImageModal('${proof.imageUrl}')" class="text-specter-cyan hover:underline text-sm">
                         ${t.viewImage}
                     </button>
                 ` : '<span class="text-specter-textMuted text-sm">-</span>';
@@ -741,7 +663,7 @@
 
             // Show/hide image download button
             const downloadImageBtn = document.getElementById('downloadTimestampImage');
-            if (proof.imageData) {
+            if (proof.imageUrl) {
                 downloadImageBtn.classList.remove('hidden');
                 downloadImageBtn.style.display = 'flex';
             } else {
@@ -782,13 +704,9 @@
         }
 
         function downloadTimestampImage() {
-            if (!currentTimestampData || !currentTimestampData.imageData) return;
-            const a = document.createElement('a');
-            a.href = currentTimestampData.imageData;
-            a.download = `bag_${currentTimestampData.bagId}_timestamped.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            if (!currentTimestampData || !currentTimestampData.imageUrl) return;
+            // Open image URL in new tab for download (CORS prevents direct download)
+            window.open(currentTimestampData.imageUrl, '_blank');
         }
 
         function verifyExternal() {
@@ -839,19 +757,15 @@
         // ===========================================
         function exportCSV() {
             const t = translations[currentLanguage];
-            let csv = `${t.colBagId},${t.colDate},${t.colVersion},${t.colPacker},${t.colProof},Hash\n`;
+            let csv = `${t.colBagId},${t.colDate},${t.colVersion},${t.colPacker},${t.colProof},Hash,Image URL\n`;
 
             allProofs.forEach(proof => {
-                let version = '', packer = '', date = '';
-                try {
-                    const data = JSON.parse(proof.dataString);
-                    version = data.version || '';
-                    packer = data.packer || '';
-                    date = data.date || '';
-                } catch (e) {}
-
+                const version = proof.version || '';
+                const packer = proof.packer || '';
+                const date = proof.date || '';
                 const status = proof.status === 'verified' ? `Verified @${proof.blockHeight}` : 'Pending';
-                csv += `"${proof.bagId}","${date}","${version}","${packer}","${status}","${proof.hash}"\n`;
+                const imageUrl = proof.imageUrl || '';
+                csv += `"${proof.bagId}","${date}","${version}","${packer}","${status}","${proof.hash || ''}","${imageUrl}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

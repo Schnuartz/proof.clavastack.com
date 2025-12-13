@@ -1,48 +1,52 @@
 console.log("Starting up ...")
 // --- Umgebungsvariablen laden und prüfen ---
-// Diese Variablen werden von Cloud Run automatisch bereitgestellt, wenn sie konfiguriert sind.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const AUTH_TOKEN = process.env.AUTH_TOKEN;
-// Cloud Run verlangt, dass der Server auf dem durch die Umgebungsvariable PORT definierten Port läuft.
 const PORT = process.env.PORT || 8080;
+const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'clavastack-proofs';
 
 // Prüfen Sie, ob die kritischen Variablen vorhanden sind.
 if (!GEMINI_API_KEY || !AUTH_TOKEN) {
-    // ACHTUNG: Wir verwenden kein process.exit() mehr hier, um den Server am Laufen zu halten,
-    // damit Cloud Run einen ordentlichen 500er-Fehler ausgibt, falls die Keys fehlen.
-    console.error("FATAL ERROR: GEMINI_API_KEY oder AUTH_TOKEN fehlt in den Umgebungsvariablen. KI-Funktion wird fehlschlagen.");
-    process.exit(1); // Entfernt, um Server zu starten, um 500er-Fehler
+    console.error("FATAL ERROR: GEMINI_API_KEY oder AUTH_TOKEN fehlt in den Umgebungsvariablen.");
+    process.exit(1);
 }
 
 // --- Importe ---
 import express from 'express';
-// Wir benötigen @google/genai, nicht @google/genai-ai
 import { GoogleGenAI } from '@google/genai';
-import cors from 'cors'; // Für die Cross-Origin-Kommunikation
+import { Storage } from '@google-cloud/storage';
+import cors from 'cors';
+import multer from 'multer';
 
 // --- Initialisierung ---
 const app = express();
 console.log("Connecting to Gemini ...");
-// Initialisiert die KI mit dem Key (wird automatisch als undefiniert behandelt, falls Key fehlt)
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY }); 
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+console.log("Connecting to Cloud Storage ...");
+const storage = new Storage();
+const bucket = storage.bucket(GCS_BUCKET_NAME);
+
+// Multer für Datei-Uploads (im Speicher halten für unveränderten Upload)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB Limit
+});
 
 // --- Middleware ---
 console.log("Configuring middleware ...");
-// 1. CORS-Konfiguration: Erlaubt Anfragen nur von erlaubten Domains.
 const allowedOrigins = [
     'https://proof.clavastack.com',
     'https://www.proof.clavastack.com',
-    'http://localhost:3000',  // Für lokale Entwicklung
-    'http://localhost:8080',  // Für lokale Entwicklung
-    'http://127.0.0.1:5500',  // VSCode Live Server
-    'http://localhost:5500'   // VSCode Live Server
+    'http://localhost:3000',
+    'http://localhost:8080',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
 ];
 
 app.use(cors({
     origin: function(origin, callback) {
-        // Erlaube Anfragen ohne Origin (z.B. curl, Postman)
         if (!origin) return callback(null, true);
-
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -50,36 +54,87 @@ app.use(cors({
             callback(new Error('Not allowed by CORS'));
         }
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'OPTIONS', 'DELETE'],
     allowedHeaders: ['Content-Type', 'X-Auth-Token'],
     credentials: false
 }));
 
-// Handle preflight OPTIONS requests explicitly
 app.options('*', cors());
+app.use(express.json({ limit: '50mb' }));
 
-// 2. Body Parser: Erlaubt das Verarbeiten von JSON-Anfragen (bis zu 50MB für Bild-Base64)
-app.use(express.json({ limit: '50mb' }));  
-
-// 3. Health Check / Root Handler
-// Wird aufgerufen, wenn Sie nur die Basis-URL eingeben.
+// Health Check
 app.get('/', (req, res) => {
-    res.status(200).send("Proxy-Server läuft. Benutzen Sie den /api/verify-serial-number Endpunkt mit POST.");
+    res.status(200).send("Proxy-Server läuft. API-Endpunkte: /api/verify-serial-number, /api/proofs");
 });
 
-// 4. Mehrheitsprinzip-Funktion für Version und Packer
+// --- Helper Funktionen ---
+const PROOFS_FILE = 'data/proofs.json';
+
+async function loadProofsData() {
+    try {
+        const file = bucket.file(PROOFS_FILE);
+        const [exists] = await file.exists();
+        if (!exists) {
+            return { proofs: [], lastUpdated: null };
+        }
+        const [contents] = await file.download();
+        return JSON.parse(contents.toString());
+    } catch (error) {
+        console.error('Error loading proofs:', error);
+        return { proofs: [], lastUpdated: null };
+    }
+}
+
+async function saveProofsData(data) {
+    try {
+        const file = bucket.file(PROOFS_FILE);
+        await file.save(JSON.stringify(data, null, 2), {
+            contentType: 'application/json',
+            metadata: {
+                cacheControl: 'no-cache'
+            }
+        });
+        return true;
+    } catch (error) {
+        console.error('Error saving proofs:', error);
+        return false;
+    }
+}
+
+async function uploadImage(buffer, originalFilename, mimeType, bagId) {
+    try {
+        // Originalen Dateinamen behalten, aber mit BagId prefix für Eindeutigkeit
+        const ext = originalFilename.split('.').pop();
+        const filename = `images/${bagId}_${originalFilename}`;
+
+        const file = bucket.file(filename);
+        await file.save(buffer, {
+            contentType: mimeType,
+            metadata: {
+                originalName: originalFilename,
+                bagId: bagId,
+                uploadedAt: new Date().toISOString()
+            }
+        });
+
+        // Public URL zurückgeben
+        return `https://storage.googleapis.com/${GCS_BUCKET_NAME}/${filename}`;
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        throw error;
+    }
+}
+
+// Mehrheitsprinzip-Funktion für Version und Packer
 function applyMajorityPrinciple(bags) {
     if (!bags || bags.length === 0) return bags;
 
-    // Finde die häufigste Version (ohne UNKNOWN)
     const versions = bags.map(b => b.version).filter(v => v && v !== 'UNKNOWN');
     const majorityVersion = getMostFrequent(versions);
 
-    // Finde den häufigsten Packer (ohne UNKNOWN)
     const packers = bags.map(b => b.packer).filter(p => p && p !== 'UNKNOWN');
     const majorityPacker = getMostFrequent(packers);
 
-    // Ersetze UNKNOWN mit Mehrheitswerten
     return bags.map(bag => ({
         ...bag,
         version: (bag.version === 'UNKNOWN' && majorityVersion) ? majorityVersion : bag.version,
@@ -96,24 +151,209 @@ function getMostFrequent(arr) {
     return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
 }
 
-// 5. Authentifizierungs-Middleware
+// Authentifizierungs-Middleware
 function authenticate(req, res, next) {
     const token = req.header('X-Auth-Token');
-
     if (!token || token !== AUTH_TOKEN) {
         console.warn("Unauthorized Access Attempt detected.");
         return res.status(401).json({ error: 'Unauthorized: Invalid or missing X-Auth-Token header.' });
     }
-    next(); // Authentifizierung erfolgreich
+    next();
 }
 
-// --- Haupt-API-Endpunkt ---
+// =====================================================
+// ÖFFENTLICHE API ENDPOINTS (ohne Auth)
+// =====================================================
+
+// GET /api/proofs - Alle Proofs öffentlich abrufen
+app.get('/api/proofs', async (req, res) => {
+    try {
+        console.log("GET /api/proofs - Lade öffentliche Proofs");
+        const data = await loadProofsData();
+        res.json(data);
+    } catch (error) {
+        console.error("Fehler beim Laden der Proofs:", error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+});
+
+// GET /api/proofs/:bagId - Einzelnen Proof abrufen
+app.get('/api/proofs/:bagId', async (req, res) => {
+    try {
+        const { bagId } = req.params;
+        const data = await loadProofsData();
+        const proof = data.proofs.find(p => p.bagId === bagId);
+
+        if (!proof) {
+            return res.status(404).json({ error: 'Proof not found' });
+        }
+
+        res.json(proof);
+    } catch (error) {
+        console.error("Fehler beim Laden des Proofs:", error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+});
+
+// =====================================================
+// GESCHÜTZTE API ENDPOINTS (mit Auth)
+// =====================================================
+
+// POST /api/proofs - Neuen Proof erstellen (mit Bild-Upload)
+app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) => {
+    try {
+        console.log("POST /api/proofs - Erstelle neuen Proof");
+
+        const { bagId, version, packer, date, hash, otsData, status, blockHeight, blockTime, blockTimeFormatted } = req.body;
+
+        if (!bagId) {
+            return res.status(400).json({ error: 'bagId is required' });
+        }
+
+        // Lade existierende Daten
+        const data = await loadProofsData();
+
+        // Prüfe ob BagId bereits existiert
+        const existingIndex = data.proofs.findIndex(p => p.bagId === bagId);
+
+        let imageUrl = null;
+
+        // Bild hochladen falls vorhanden
+        if (req.file) {
+            console.log(`Uploading image: ${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)`);
+            imageUrl = await uploadImage(
+                req.file.buffer,
+                req.file.originalname,
+                req.file.mimetype,
+                bagId
+            );
+            console.log(`Image uploaded: ${imageUrl}`);
+        }
+
+        const proof = {
+            bagId,
+            version: version || 'Unknown',
+            packer: packer || 'Unknown',
+            date: date || new Date().toISOString(),
+            hash: hash || null,
+            otsData: otsData || null,
+            status: status || 'pending',
+            blockHeight: blockHeight || null,
+            blockTime: blockTime || null,
+            blockTimeFormatted: blockTimeFormatted || null,
+            imageUrl: imageUrl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (existingIndex >= 0) {
+            // Update existierenden Proof (behalte altes Bild wenn kein neues)
+            if (!imageUrl && data.proofs[existingIndex].imageUrl) {
+                proof.imageUrl = data.proofs[existingIndex].imageUrl;
+            }
+            proof.createdAt = data.proofs[existingIndex].createdAt;
+            data.proofs[existingIndex] = proof;
+        } else {
+            // Neuen Proof hinzufügen
+            data.proofs.push(proof);
+        }
+
+        data.lastUpdated = new Date().toISOString();
+
+        const saved = await saveProofsData(data);
+        if (!saved) {
+            return res.status(500).json({ error: 'Failed to save proof' });
+        }
+
+        res.status(201).json(proof);
+    } catch (error) {
+        console.error("Fehler beim Erstellen des Proofs:", error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+});
+
+// PUT /api/proofs/:bagId - Proof aktualisieren (z.B. Timestamp-Status)
+app.put('/api/proofs/:bagId', authenticate, async (req, res) => {
+    try {
+        const { bagId } = req.params;
+        const updates = req.body;
+
+        const data = await loadProofsData();
+        const index = data.proofs.findIndex(p => p.bagId === bagId);
+
+        if (index < 0) {
+            return res.status(404).json({ error: 'Proof not found' });
+        }
+
+        // Aktualisiere nur die übergebenen Felder
+        data.proofs[index] = {
+            ...data.proofs[index],
+            ...updates,
+            updatedAt: new Date().toISOString()
+        };
+
+        data.lastUpdated = new Date().toISOString();
+
+        const saved = await saveProofsData(data);
+        if (!saved) {
+            return res.status(500).json({ error: 'Failed to update proof' });
+        }
+
+        res.json(data.proofs[index]);
+    } catch (error) {
+        console.error("Fehler beim Aktualisieren des Proofs:", error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+});
+
+// DELETE /api/proofs/:bagId - Proof löschen
+app.delete('/api/proofs/:bagId', authenticate, async (req, res) => {
+    try {
+        const { bagId } = req.params;
+
+        const data = await loadProofsData();
+        const index = data.proofs.findIndex(p => p.bagId === bagId);
+
+        if (index < 0) {
+            return res.status(404).json({ error: 'Proof not found' });
+        }
+
+        // Lösche auch das Bild aus Cloud Storage
+        const proof = data.proofs[index];
+        if (proof.imageUrl) {
+            try {
+                const imagePath = proof.imageUrl.replace(`https://storage.googleapis.com/${GCS_BUCKET_NAME}/`, '');
+                await bucket.file(imagePath).delete();
+                console.log(`Deleted image: ${imagePath}`);
+            } catch (imgError) {
+                console.warn('Could not delete image:', imgError.message);
+            }
+        }
+
+        data.proofs.splice(index, 1);
+        data.lastUpdated = new Date().toISOString();
+
+        const saved = await saveProofsData(data);
+        if (!saved) {
+            return res.status(500).json({ error: 'Failed to delete proof' });
+        }
+
+        res.json({ success: true, message: 'Proof deleted' });
+    } catch (error) {
+        console.error("Fehler beim Löschen des Proofs:", error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+});
+
+// =====================================================
+// ORIGINAL GEMINI ENDPOINT
+// =====================================================
+
 app.post('/api/verify-serial-number', authenticate, async (req, res) => {
-    // Prüft, ob der KI-Key überhaupt gesetzt wurde
     if (!GEMINI_API_KEY) {
         return res.status(500).json({ error: 'KI-API Key nicht auf dem Server konfiguriert.' });
     }
-    
+
     try {
         console.log("Anfrage am /api/verify-serial-number empfangen und authentifiziert.");
 
@@ -122,8 +362,7 @@ app.post('/api/verify-serial-number', authenticate, async (req, res) => {
         if (!base64Data || !mimeType) {
             return res.status(400).json({ error: 'Fehlende Base64-Daten oder mimeType im Body.' });
         }
-        
-        // Die Prompt-Anweisung an das Modell
+
         const prompt = `Du bist ein hochpräziser OCR-Analyst für Specter Hardware Wallet Verpackungen (Tamper-Evident Bags).
 
 Extrahiere die folgenden Informationen von JEDEM sichtbaren Bag auf dem Foto und gib sie als JSON-Array zurück:
@@ -141,24 +380,19 @@ Beispiel für die gewünschte JSON-Ausgabe:
 ]
 `;
 
-        // KI-Aufruf mit Bilddaten
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-2.5-flash',
             contents: [
                 { role: "user", parts: [{ text: prompt }] },
                 { role: "user", parts: [{ inlineData: { data: base64Data, mimeType: mimeType } }] }
             ],
             config: {
-                // Erzwingt JSON-Ausgabe
                 responseMimeType: "application/json"
             }
-        }); 
+        });
 
-        // Die Antwort ist ein JSON-String. Wir parsen ihn und senden ihn zurück.
         const jsonText = response.candidates[0].content.parts[0].text;
         const result = JSON.parse(jsonText);
-
-        // Mehrheitsprinzip für Version und Packer anwenden
         const processedResult = applyMajorityPrinciple(result);
 
         console.log("KI-Analyse erfolgreich abgeschlossen.");
@@ -166,15 +400,11 @@ Beispiel für die gewünschte JSON-Ausgabe:
 
     } catch (error) {
         console.error("Fehler während der KI-Verarbeitung:", error);
-        // Sende einen 500er-Fehler zurück an das Frontend
         res.status(500).json({ error: 'Internal Server Error during AI processing.', details: error.message });
     }
 });
 
 console.log("Starting server ...");
-// --- Server starten (Kritischer Teil, um exit(0) zu verhindern) ---
-// Der Server muss auf dem Cloud Run PORT lauschen.
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}. Environment: ${process.env.NODE_ENV}`);
 });
-// Wichtig: Es darf KEIN process.exit() Aufruf nach app.listen geben!

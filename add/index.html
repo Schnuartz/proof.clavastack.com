@@ -236,7 +236,8 @@
     </div>
 
     <script>
-        const PROXY_API_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app/api/verify-serial-number";
+        const API_BASE_URL = "https://secure-ai-proxy-server-187831042201.europe-west1.run.app";
+        const PROXY_API_URL = `${API_BASE_URL}/api/verify-serial-number`;
 
         const PACKERS = {
             "Schnuartz": {
@@ -594,7 +595,7 @@
             return new Uint8Array(hashBuffer);
         }
 
-        async function createTimestamp(bagData, imageData) {
+        async function createTimestamp(bagData) {
             try {
                 const dataString = JSON.stringify({
                     bagId: bagData.bagId,
@@ -614,11 +615,6 @@
                 await OpenTimestamps.stamp(detached);
                 const otsBytes = detached.serializeToBytes();
                 const otsHex = bytesToHex(otsBytes);
-
-                // Save image to IndexedDB
-                if (imageData) {
-                    await saveImage(bagData.bagId, imageData);
-                }
 
                 return {
                     hash: hashHex,
@@ -818,6 +814,7 @@
             document.getElementById('sortControls').classList.add('hidden');
 
             try {
+                // Step 1: Analyze image with Gemini AI
                 const base64Data = await base64EncodeFile(file);
 
                 const response = await fetch(PROXY_API_URL, {
@@ -853,43 +850,51 @@
                     })
                 }));
 
+                // Step 2: Create timestamps and upload to Cloud Storage
                 setProcessingState(true, 'timestamping');
-                const timestamps = loadTimestamps();
 
                 for (const item of resultsWithDate) {
-                    const bagKey = `bag_${item.bagId}`;
+                    // Create OpenTimestamps proof
+                    const tsInfo = await createTimestamp(item);
+                    if (tsInfo) {
+                        item.timestamp = tsInfo;
+                    }
 
-                    if (!timestamps[bagKey]) {
-                        const tsInfo = await createTimestamp(item, currentImageData);
-                        if (tsInfo) {
-                            timestamps[bagKey] = tsInfo;
-                            item.timestamp = tsInfo;
+                    // Upload proof with image to backend (Cloud Storage)
+                    const formData = new FormData();
+                    formData.append('bagId', item.bagId);
+                    formData.append('version', item.version || 'Unknown');
+                    formData.append('packer', item.packer || 'Unknown');
+                    formData.append('date', item.date);
+                    if (tsInfo) {
+                        formData.append('hash', tsInfo.hash);
+                        formData.append('otsData', tsInfo.otsData);
+                        formData.append('status', tsInfo.status);
+                    }
+                    // Attach original image file (unmodified)
+                    formData.append('image', file, file.name);
+
+                    try {
+                        const uploadResponse = await fetch(`${API_BASE_URL}/api/proofs`, {
+                            method: 'POST',
+                            headers: {
+                                'X-Auth-Token': localStorage.getItem('auth_token')
+                            },
+                            body: formData
+                        });
+
+                        if (uploadResponse.ok) {
+                            const savedProof = await uploadResponse.json();
+                            item.imageUrl = savedProof.imageUrl;
+                            console.log(`Proof saved for bag ${item.bagId}:`, savedProof.imageUrl);
+                        } else {
+                            console.error(`Failed to save proof for bag ${item.bagId}`);
                         }
-                    } else {
-                        const existing = timestamps[bagKey];
-
-                        // Remove old imageData if present to free up localStorage space
-                        if (existing.imageData) {
-                            delete existing.imageData;
-                        }
-
-                        if (existing.status === 'pending') {
-                            const upgradedOts = await upgradeTimestamp(existing);
-                            if (upgradedOts) existing.otsData = upgradedOts;
-
-                            const verifyResult = await verifyTimestamp(existing);
-                            if (verifyResult.verified) {
-                                existing.status = 'verified';
-                                existing.blockHeight = verifyResult.blockHeight;
-                                existing.blockTime = verifyResult.blockTime;
-                                existing.blockTimeFormatted = verifyResult.blockTimeFormatted;
-                            }
-                        }
-                        item.timestamp = existing;
+                    } catch (uploadError) {
+                        console.error(`Upload error for bag ${item.bagId}:`, uploadError);
                     }
                 }
 
-                saveTimestamps(timestamps);
                 currentResults = resultsWithDate;
                 displayResults(resultsWithDate, true);
 
