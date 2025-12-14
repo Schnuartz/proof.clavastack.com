@@ -426,30 +426,17 @@ function bytesToHex(bytes) {
 function extractBitcoinAttestations(timestamp) {
     const attestations = [];
 
-    function walkTimestamp(ts, depth = 0) {
+    function walkTimestamp(ts) {
         if (!ts) return;
-
-        // Debug: log the structure
-        if (depth === 0) {
-            console.log(`[OTS] Timestamp structure keys: ${Object.keys(ts).join(', ')}`);
-        }
 
         // Check for attestations
         if (ts.attestations && ts.attestations.length > 0) {
-            console.log(`[OTS] Found ${ts.attestations.length} attestation(s) at depth ${depth}`);
             for (const att of ts.attestations) {
-                console.log(`[OTS] Attestation type: ${att.constructor?.name}, keys: ${Object.keys(att).join(', ')}`);
                 // BitcoinBlockHeaderAttestation has a 'height' property
-                if (att.height !== undefined && att.time !== undefined) {
+                if (att.height !== undefined) {
                     attestations.push({
                         blockHeight: att.height,
-                        blockTime: att.time
-                    });
-                } else if (att.height !== undefined) {
-                    // Some versions only have height
-                    attestations.push({
-                        blockHeight: att.height,
-                        blockTime: null
+                        blockTime: att.time || null
                     });
                 }
             }
@@ -458,7 +445,7 @@ function extractBitcoinAttestations(timestamp) {
         // Walk through ops
         if (ts.ops && ts.ops.size > 0) {
             for (const [op, nextTs] of ts.ops) {
-                walkTimestamp(nextTs, depth + 1);
+                walkTimestamp(nextTs);
             }
         }
     }
@@ -494,7 +481,6 @@ async function upgradeAndVerifyTimestamp(proof) {
         // After upgrade, try to extract Bitcoin attestations directly from the OTS file
         // This avoids the need to contact a Bitcoin node
         const attestations = extractBitcoinAttestations(detachedOts.timestamp);
-        console.log(`[OTS] Bag ${proof.bagId}: found ${attestations.length} attestation(s)`);
 
         if (attestations.length > 0) {
             const att = attestations[0]; // Use first attestation
@@ -585,7 +571,6 @@ async function checkPendingTimestamps() {
                 const index = data.proofs.findIndex(p => p.bagId === proof.bagId);
                 if (index >= 0) {
                     // Update proof with verification result
-                    console.log(`[OTS] Updating bag ${proof.bagId}: status=${result.status}, blockHeight=${result.blockHeight}, blockTime=${result.blockTime}`);
                     data.proofs[index] = {
                         ...data.proofs[index],
                         status: result.status,
