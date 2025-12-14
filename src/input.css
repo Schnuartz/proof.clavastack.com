@@ -10,11 +10,11 @@ body {
 }
 
 .glow-cyan {
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 20px rgba(31, 153, 229, 0.3);
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, #00d4ff 0%, #0891b2 100%);
+    background: linear-gradient(135deg, #1F99E5 0%, #1a82c4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -22,7 +22,7 @@ body {
 
 .card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(31, 153, 229, 0.15);
 }
 
 .file-upload-label {
@@ -31,17 +31,17 @@ body {
     padding: 2rem;
     border: 2px dashed #1f2937;
     border-radius: 1rem;
-    background-color: #111827;
+    background-color: #1E2734;
     text-align: center;
     transition: all 0.2s;
 }
 
 .file-upload-label:hover {
-    border-color: #00d4ff;
-    background-color: rgba(0, 212, 255, 0.05);
+    border-color: #1F99E5;
+    background-color: rgba(31, 153, 229, 0.05);
 }
 
 .file-upload-label.active {
-    border-color: #00d4ff;
-    background-color: rgba(0, 212, 255, 0.1);
+    border-color: #1F99E5;
+    background-color: rgba(31, 153, 229, 0.1);
 }

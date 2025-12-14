@@ -10,10 +10,10 @@ module.exports = {
         specter: {
           dark: '#0a0e17',
           darker: '#060810',
-          card: '#111827',
+          card: '#1E2734',
           border: '#1f2937',
-          cyan: '#00d4ff',
-          cyanDark: '#0891b2',
+          cyan: '#1F99E5',
+          cyanDark: '#1a82c4',
           text: '#e5e7eb',
           textMuted: '#9ca3af',
           success: '#10b981',
