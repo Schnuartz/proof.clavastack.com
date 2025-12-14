@@ -17,6 +17,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Storage } from '@google-cloud/storage';
 import cors from 'cors';
 import multer from 'multer';
+import OpenTimestamps from 'javascript-opentimestamps';
 
 // --- Initialisierung ---
 const app = express();
@@ -404,7 +405,173 @@ Beispiel für die gewünschte JSON-Ausgabe:
     }
 });
 
+// =====================================================
+// OPENTIMESTAMPS BACKGROUND VERIFICATION
+// =====================================================
+
+// Helper functions for hex/bytes conversion
+function hexToBytes(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+}
+
+function bytesToHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Upgrade and verify a single timestamp
+async function upgradeAndVerifyTimestamp(proof) {
+    try {
+        if (!proof.otsData || !proof.hash) {
+            return null;
+        }
+
+        const otsBytes = hexToBytes(proof.otsData);
+        const hashBytes = hexToBytes(proof.hash);
+
+        // Deserialize the OTS file
+        const detachedOts = OpenTimestamps.DetachedTimestampFile.deserialize(otsBytes);
+
+        // Try to upgrade (get attestation from calendar servers)
+        let upgraded = false;
+        try {
+            upgraded = await OpenTimestamps.upgrade(detachedOts);
+            if (upgraded) {
+                console.log(`[OTS] Timestamp upgraded for bag ${proof.bagId}`);
+            }
+        } catch (upgradeError) {
+            // Upgrade might fail if already upgraded or network issues
+            console.log(`[OTS] Upgrade attempt for bag ${proof.bagId}: ${upgradeError.message || 'no change'}`);
+        }
+
+        // Create detached file from hash for verification
+        const detachedHash = OpenTimestamps.DetachedTimestampFile.fromHash(
+            new OpenTimestamps.Ops.OpSHA256(),
+            hashBytes
+        );
+
+        // Try to verify
+        const verifyResult = await OpenTimestamps.verify(detachedOts, detachedHash);
+
+        if (verifyResult && typeof verifyResult === 'object' && Object.keys(verifyResult).length > 0) {
+            const attestations = Object.keys(verifyResult);
+
+            for (const attestation of attestations) {
+                const unixTime = verifyResult[attestation];
+
+                // Validate unixTime
+                if (unixTime === undefined || unixTime === null) continue;
+                if (typeof unixTime !== 'number') continue;
+                if (isNaN(unixTime) || !isFinite(unixTime)) continue;
+                if (unixTime <= 0) continue;
+
+                // Sanity check: between 2009 (Bitcoin genesis) and 2100
+                const minTimestamp = 1230940800; // Jan 3, 2009
+                const maxTimestamp = 4102444800; // Jan 1, 2100
+                if (unixTime < minTimestamp || unixTime > maxTimestamp) continue;
+
+                const date = new Date(unixTime * 1000);
+                if (isNaN(date.getTime())) continue;
+
+                // Return verified result with updated OTS data (in case it was upgraded)
+                return {
+                    status: 'verified',
+                    blockHeight: attestation,
+                    blockTime: date.toISOString(),
+                    blockTimeFormatted: date.toLocaleString('en-US'),
+                    otsData: upgraded ? bytesToHex(detachedOts.serializeToBytes()) : proof.otsData
+                };
+            }
+        }
+
+        // Not verified yet, but return upgraded OTS data if available
+        if (upgraded) {
+            return {
+                status: 'pending',
+                otsData: bytesToHex(detachedOts.serializeToBytes())
+            };
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`[OTS] Error verifying timestamp for bag ${proof.bagId}:`, error.message);
+        return null;
+    }
+}
+
+// Check all pending timestamps
+async function checkPendingTimestamps() {
+    try {
+        const data = await loadProofsData();
+        const pendingProofs = data.proofs.filter(p => p.status === 'pending' && p.otsData && p.hash);
+
+        if (pendingProofs.length === 0) {
+            return; // No pending proofs to check
+        }
+
+        console.log(`[OTS] Checking ${pendingProofs.length} pending timestamp(s)...`);
+
+        let updated = false;
+
+        for (const proof of pendingProofs) {
+            const result = await upgradeAndVerifyTimestamp(proof);
+
+            if (result) {
+                const index = data.proofs.findIndex(p => p.bagId === proof.bagId);
+                if (index >= 0) {
+                    // Update proof with verification result
+                    data.proofs[index] = {
+                        ...data.proofs[index],
+                        status: result.status,
+                        otsData: result.otsData,
+                        blockHeight: result.blockHeight || null,
+                        blockTime: result.blockTime || null,
+                        blockTimeFormatted: result.blockTimeFormatted || null,
+                        updatedAt: new Date().toISOString()
+                    };
+                    updated = true;
+
+                    if (result.status === 'verified') {
+                        console.log(`[OTS] ✓ Bag ${proof.bagId} verified at block ${result.blockHeight}`);
+                    }
+                }
+            }
+        }
+
+        if (updated) {
+            data.lastUpdated = new Date().toISOString();
+            await saveProofsData(data);
+            console.log(`[OTS] Proofs data saved.`);
+        }
+    } catch (error) {
+        console.error('[OTS] Error checking pending timestamps:', error.message);
+    }
+}
+
+// Start background verification job (runs every 60 seconds)
+const OTS_CHECK_INTERVAL = 60 * 1000; // 1 minute
+
+function startTimestampVerificationJob() {
+    console.log(`[OTS] Starting timestamp verification job (interval: ${OTS_CHECK_INTERVAL / 1000}s)`);
+
+    // Run immediately on startup
+    setTimeout(() => {
+        checkPendingTimestamps();
+    }, 5000); // Wait 5 seconds after startup
+
+    // Then run every minute
+    setInterval(() => {
+        checkPendingTimestamps();
+    }, OTS_CHECK_INTERVAL);
+}
+
 console.log("Starting server ...");
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}. Environment: ${process.env.NODE_ENV}`);
+
+    // Start the background verification job after server is ready
+    startTimestampVerificationJob();
 });
