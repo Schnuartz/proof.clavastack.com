@@ -270,6 +270,8 @@
                 heroSlogan: "Trust the Source, Not the Route",
                 heroDescription: "Every Specter Hardware Wallet packaged by ClavaStack is cryptographically timestamped on the Bitcoin blockchain. This provides immutable proof of packaging integrity that can be independently verified by anyone.",
                 suppliersTitle: "Official Suppliers",
+                shipsFromClavaStack: "Ships directly from ClavaStack",
+                shipsOwnWarehouse: "Ships from own warehouse",
                 proofTableTitle: "Verified Packaging Proofs",
                 proofTableSubtitle: "All packages with Bitcoin blockchain timestamps",
                 sortNewest: "Newest first",
@@ -310,7 +312,9 @@
                 heroSubtitle: "verpackt von ClavaStack",
                 heroSlogan: "Vertraue der Quelle, nicht dem Weg",
                 heroDescription: "Jede von ClavaStack verpackte Specter Hardware Wallet wird kryptografisch auf der Bitcoin-Blockchain mit einem Zeitstempel versehen. Dies bietet einen unveranderlichen Nachweis der Verpackungsintegritat, der von jedem unabhangig uberpruft werden kann.",
-                suppliersTitle: "Offizielle Handler",
+                suppliersTitle: "Offizielle Händler",
+                shipsFromClavaStack: "Versand direkt von ClavaStack",
+                shipsOwnWarehouse: "Versand aus eigenem Lager",
                 proofTableTitle: "Verifizierte Verpackungsnachweise",
                 proofTableSubtitle: "Alle Pakete mit Bitcoin-Blockchain-Zeitstempeln",
                 sortNewest: "Neueste zuerst",
@@ -414,8 +418,9 @@
             document.getElementById('currentLang').textContent = currentLanguage.toUpperCase();
             document.getElementById('currentFlag').src = `assets/flags/${currentLanguage}.svg`;
 
-            // Re-render proofs table with translated content
+            // Re-render proofs table and suppliers with translated content
             renderProofs();
+            renderSuppliers();
         }
 
         function toggleLanguageMenu() {
@@ -438,29 +443,35 @@
         // Suppliers Data
         // ===========================================
         const suppliers = [
-            { name: "ClavaStack", url: "https://clavastack.com/", logo: "assets/logos/ClavaStack.png", region: "Europe, Germany" },
-            { name: "Pleb.Style", url: "https://pleb.style/", logo: "assets/logos/Plebstyle.jpg", region: "Europe, Germany" },
-            { name: "Bayoto", url: "https://bayoto.me/", logo: "assets/logos/Bayoto.jpg", region: "Europe" },
-            { name: "Cryptomaan", url: "https://cryptomaan.eu/collections/hardware-wallets", logo: "assets/logos/Cryptomaan.jpg", region: "Europe, Netherlands" },
-            { name: "BTC Direct", url: "https://shop.btcdirect.eu/", logo: "assets/logos/btcdirect.jpg", region: "Europe, Netherlands" },
-            { name: "Dezentralshop", url: "https://dezentralshop.ch/", logo: "assets/logos/Dezentralshop.jpg", region: "Europe, Switzerland" },
-            { name: "LWallet", url: "https://lwallet.com.ua/en/", logo: "assets/logos/Lwallet.jpg", region: "Europe, Ukraine" },
-            { name: "Bitcoin Brabant", url: "https://bitcoinbrabant.com/", logo: "assets/logos/BitcoinBrabant.jpg", region: "Europe, Netherlands" },
-            { name: "Bitsaga", url: "https://bitsaga.be/", logo: "assets/logos/BitSaga.jpg", region: "Europe, Belgium" }
+            { name: "ClavaStack", url: "https://clavastack.com/", logo: "assets/logos/ClavaStack.png", region: { en: "Europe, Germany", de: "Europa, Deutschland" }, ownWarehouse: true },
+            { name: "Pleb.Style", url: "https://pleb.style/", logo: "assets/logos/Plebstyle.jpg", region: { en: "Europe, Germany", de: "Europa, Deutschland" }, ownWarehouse: false },
+            { name: "Bayoto", url: "https://bayoto.me/", logo: "assets/logos/Bayoto.jpg", region: { en: "Europe, Denmark", de: "Europa, Dänemark" }, ownWarehouse: true },
+            { name: "Cryptomaan", url: "https://cryptomaan.eu/collections/hardware-wallets", logo: "assets/logos/Cryptomaan.jpg", region: { en: "Europe, Netherlands", de: "Europa, Niederlande" }, ownWarehouse: false },
+            { name: "BTC Direct", url: "https://shop.btcdirect.eu/", logo: "assets/logos/btcdirect.jpg", region: { en: "Europe, Netherlands", de: "Europa, Niederlande" }, ownWarehouse: false },
+            { name: "Dezentralshop", url: "https://dezentralshop.ch/", logo: "assets/logos/Dezentralshop.jpg", region: { en: "Europe, Switzerland", de: "Europa, Schweiz" }, ownWarehouse: true },
+            { name: "LWallet", url: "https://lwallet.com.ua/en/", logo: "assets/logos/Lwallet.jpg", region: { en: "Europe, Ukraine", de: "Europa, Ukraine" }, ownWarehouse: false },
+            { name: "Bitcoin Brabant", url: "https://bitcoinbrabant.com/", logo: "assets/logos/BitcoinBrabant.jpg", region: { en: "Europe, Netherlands", de: "Europa, Niederlande" }, ownWarehouse: false },
+            { name: "Bitsaga", url: "https://bitsaga.be/", logo: "assets/logos/BitSaga.jpg", region: { en: "Europe, Belgium", de: "Europa, Belgien" }, ownWarehouse: false },
+            { name: "Bitcoin Bazis", url: "https://bitcoinbazis.hu/", logo: "assets/logos/BitcoinBazis.jpg", region: { en: "Europe, Hungary", de: "Europa, Ungarn" }, ownWarehouse: true }
         ];
 
         function renderSuppliers() {
             const grid = document.getElementById('suppliersGrid');
-            grid.innerHTML = suppliers.map(s => `
+            const t = translations[currentLanguage];
+            grid.innerHTML = suppliers.map(s => {
+                const region = typeof s.region === 'object' ? (s.region[currentLanguage] || s.region.en) : s.region;
+                const shipsFrom = s.ownWarehouse ? t.shipsOwnWarehouse : t.shipsFromClavaStack;
+                return `
                 <a href="${s.url}" target="_blank" rel="noopener"
                    class="bg-specter-dark border border-specter-border rounded-xl p-4 hover:border-specter-cyan transition card-hover flex flex-col items-center text-center">
                     <div class="w-16 h-16 bg-specter-card rounded-lg flex items-center justify-center mb-3 overflow-hidden">
                         <img src="${s.logo}" alt="${s.name}" class="w-12 h-12 object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-2xl font-bold text-specter-cyan\\'>${s.name.charAt(0)}</span>'">
                     </div>
                     <h3 class="font-semibold text-white mb-1">${s.name}</h3>
-                    <p class="text-xs text-specter-textMuted">${s.region}</p>
+                    <p class="text-xs text-specter-textMuted">${region}</p>
+                    <p class="text-xs text-specter-cyan mt-1">${shipsFrom}</p>
                 </a>
-            `).join('');
+            `}).join('');
         }
 
         // ===========================================
