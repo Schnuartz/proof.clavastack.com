@@ -17,7 +17,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Storage } from '@google-cloud/storage';
 import cors from 'cors';
 import multer from 'multer';
-import OpenTimestamps from 'javascript-opentimestamps';
+import OpenTimestamps from 'opentimestamps';
 
 // --- Initialisierung ---
 const app = express();
