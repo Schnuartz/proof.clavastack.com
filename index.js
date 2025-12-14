@@ -585,6 +585,7 @@ async function checkPendingTimestamps() {
                 const index = data.proofs.findIndex(p => p.bagId === proof.bagId);
                 if (index >= 0) {
                     // Update proof with verification result
+                    console.log(`[OTS] Updating bag ${proof.bagId}: status=${result.status}, blockHeight=${result.blockHeight}, blockTime=${result.blockTime}`);
                     data.proofs[index] = {
                         ...data.proofs[index],
                         status: result.status,
