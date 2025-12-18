@@ -137,8 +137,11 @@ Die `.ots` Datei enthält den Hash des **Original-Bildes**. Um auf OpenTimestamp
 ### Authentifizierung
 
 - Header: `X-Auth-Token`
-- Token in Cloud Run Environment Variable: `AUTH_TOKEN`
+- Tokens in Cloud Run Environment Variable: `AUTH_TOKENS` (JSON-Format)
+- Format: `{"token1":"Packer1","token2":"Packer2"}`
+- Jeder Token ist einem Versiegler (Packer) zugeordnet
 - GET Endpoints sind öffentlich, POST/PUT/DELETE erfordern Token
+- Bei neuen Proofs wird das Feld `sealedBy` automatisch vom Token-Packer gesetzt
 
 ### Datenspeicherung (Cloud Storage)
 
@@ -155,7 +158,7 @@ gs://clavastack-proofs/
 | Variable | Beschreibung |
 |----------|--------------|
 | `GEMINI_API_KEY` | Google Gemini API Key |
-| `AUTH_TOKEN` | Authentifizierungs-Token |
+| `AUTH_TOKENS` | JSON mit Token-Packer-Zuordnung, z.B. `{"token":"Schnuartz"}` |
 | `GCS_BUCKET_NAME` | Cloud Storage Bucket (default: clavastack-proofs) |
 | `PORT` | Server-Port (default: 8080) |
 

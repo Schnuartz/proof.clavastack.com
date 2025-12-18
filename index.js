@@ -1,13 +1,13 @@
 console.log("Starting up ...")
 // --- Umgebungsvariablen laden und prüfen ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const AUTH_TOKEN = process.env.AUTH_TOKEN;
+const AUTH_TOKENS = process.env.AUTH_TOKENS ? JSON.parse(process.env.AUTH_TOKENS) : {};
 const PORT = process.env.PORT || 8080;
 const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'clavastack-proofs';
 
 // Prüfen Sie, ob die kritischen Variablen vorhanden sind.
-if (!GEMINI_API_KEY || !AUTH_TOKEN) {
-    console.error("FATAL ERROR: GEMINI_API_KEY oder AUTH_TOKEN fehlt in den Umgebungsvariablen.");
+if (!GEMINI_API_KEY || Object.keys(AUTH_TOKENS).length === 0) {
+    console.error("FATAL ERROR: GEMINI_API_KEY oder AUTH_TOKENS fehlt in den Umgebungsvariablen.");
     process.exit(1);
 }
 
@@ -155,10 +155,12 @@ function getMostFrequent(arr) {
 // Authentifizierungs-Middleware
 function authenticate(req, res, next) {
     const token = req.header('X-Auth-Token');
-    if (!token || token !== AUTH_TOKEN) {
+    if (!token || !AUTH_TOKENS[token]) {
         console.warn("Unauthorized Access Attempt detected.");
         return res.status(401).json({ error: 'Unauthorized: Invalid or missing X-Auth-Token header.' });
     }
+    // Speichere den zugehörigen Packer für spätere Verwendung
+    req.tokenPacker = AUTH_TOKENS[token];
     next();
 }
 
@@ -231,10 +233,17 @@ app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) =
             console.log(`Image uploaded: ${imageUrl}`);
         }
 
+        // Validierung: Warnung wenn KI-Packer nicht zum Token-Packer passt
+        const detectedPacker = packer || 'Unknown';
+        if (detectedPacker !== 'Unknown' && detectedPacker !== req.tokenPacker) {
+            console.warn(`[WARNING] Packer mismatch for bag ${bagId}: AI detected "${detectedPacker}", but token belongs to "${req.tokenPacker}"`);
+        }
+
         const proof = {
             bagId,
             version: version || 'Unknown',
-            packer: packer || 'Unknown',
+            packer: detectedPacker,
+            sealedBy: req.tokenPacker,
             date: date || new Date().toISOString(),
             hash: hash || null,
             otsData: otsData || null,
@@ -248,11 +257,15 @@ app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) =
         };
 
         if (existingIndex >= 0) {
-            // Update existierenden Proof (behalte altes Bild wenn kein neues)
+            // Update existierenden Proof (behalte altes Bild und sealedBy wenn kein neues)
             if (!imageUrl && data.proofs[existingIndex].imageUrl) {
                 proof.imageUrl = data.proofs[existingIndex].imageUrl;
             }
             proof.createdAt = data.proofs[existingIndex].createdAt;
+            // Behalte ursprüngliches sealedBy wenn vorhanden
+            if (data.proofs[existingIndex].sealedBy) {
+                proof.sealedBy = data.proofs[existingIndex].sealedBy;
+            }
             data.proofs[existingIndex] = proof;
         } else {
             // Neuen Proof hinzufügen
