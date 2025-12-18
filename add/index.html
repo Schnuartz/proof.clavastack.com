@@ -253,56 +253,69 @@
     </div>
 
     <!-- Camera Modal -->
-    <div id="cameraModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-6">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="text-xl font-bold text-white" data-i18n="cameraTitle">Take Picture</h3>
-                <button onclick="closeCamera()" class="text-specter-textMuted hover:text-white text-2xl">&times;</button>
+    <div id="cameraModal" class="fixed inset-0 bg-black hidden items-center justify-center z-50">
+        <div class="relative w-full h-full flex flex-col">
+            <!-- Top Bar -->
+            <div class="absolute top-0 left-0 right-0 z-20 flex justify-between items-center p-4 bg-gradient-to-b from-black/60 to-transparent">
+                <button onclick="closeCamera()" class="w-10 h-10 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                <h3 class="text-white font-semibold text-lg" data-i18n="cameraTitle">Take Picture</h3>
+                <button onclick="switchCamera()" id="switchCameraBtn" class="w-10 h-10 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
             </div>
 
             <!-- Camera Preview -->
-            <div class="relative bg-black rounded-xl overflow-hidden mb-4">
-                <video id="cameraPreview" autoplay playsinline class="w-full h-auto max-h-[60vh] object-contain"></video>
+            <div class="relative flex-1 flex items-center justify-center bg-black overflow-hidden">
+                <video id="cameraPreview" autoplay playsinline class="w-full h-full object-contain"></video>
                 <canvas id="cameraCanvas" class="hidden"></canvas>
 
+                <!-- Flash effect overlay -->
+                <div id="cameraFlash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-100"></div>
+
                 <!-- Camera loading indicator -->
-                <div id="cameraLoading" class="absolute inset-0 flex items-center justify-center bg-specter-darker">
+                <div id="cameraLoading" class="absolute inset-0 flex items-center justify-center bg-black">
                     <div class="text-center">
-                        <svg class="animate-spin h-10 w-10 mx-auto text-specter-cyan mb-3" fill="none" viewBox="0 0 24 24">
+                        <svg class="animate-spin h-12 w-12 mx-auto text-specter-cyan mb-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <p class="text-specter-textMuted" data-i18n="cameraLoading">Starting camera...</p>
+                        <p class="text-white/70 text-sm" data-i18n="cameraLoading">Starting camera...</p>
                     </div>
                 </div>
 
                 <!-- Camera error -->
-                <div id="cameraError" class="hidden absolute inset-0 flex items-center justify-center bg-specter-darker">
-                    <div class="text-center p-6">
-                        <svg class="w-12 h-12 mx-auto text-specter-error mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div id="cameraError" class="hidden absolute inset-0 flex items-center justify-center bg-black">
+                    <div class="text-center p-6 max-w-sm">
+                        <svg class="w-16 h-16 mx-auto text-specter-error mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                         </svg>
-                        <p class="text-specter-error font-semibold mb-2" data-i18n="cameraErrorTitle">Camera Error</p>
-                        <p id="cameraErrorMsg" class="text-specter-textMuted text-sm"></p>
+                        <p class="text-specter-error font-semibold text-lg mb-2" data-i18n="cameraErrorTitle">Camera Error</p>
+                        <p id="cameraErrorMsg" class="text-white/60 text-sm"></p>
+                        <button onclick="closeCamera()" class="mt-6 px-6 py-2 bg-specter-card border border-specter-border rounded-lg text-white hover:border-specter-cyan transition">
+                            <span data-i18n="close">Close</span>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Camera Controls -->
-            <div class="flex gap-3">
-                <button onclick="switchCamera()" id="switchCameraBtn" class="flex-1 px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    <span data-i18n="switchCamera">Switch Camera</span>
-                </button>
-                <button onclick="capturePhoto()" id="captureBtn" class="flex-1 px-4 py-3 bg-specter-cyan text-specter-darker font-semibold rounded-lg hover:bg-specter-cyanDark transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <span data-i18n="capture">Capture</span>
-                </button>
+            <!-- Bottom Controls -->
+            <div class="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-6 bg-gradient-to-t from-black/80 to-transparent">
+                <div class="flex items-center justify-center">
+                    <!-- Capture Button -->
+                    <button onclick="capturePhoto()" id="captureBtn" class="group relative w-20 h-20 rounded-full bg-white hover:bg-white/90 transition-transform active:scale-95 focus:outline-none">
+                        <!-- Outer ring -->
+                        <span class="absolute inset-0 rounded-full border-4 border-white/30"></span>
+                        <!-- Inner circle -->
+                        <span class="absolute inset-2 rounded-full bg-white group-hover:bg-specter-cyan transition-colors"></span>
+                    </button>
+                </div>
+                <p class="text-center text-white/50 text-sm mt-4" data-i18n="captureTip">Tap to capture</p>
             </div>
         </div>
     </div>
@@ -396,7 +409,9 @@
                 cameraErrorGeneric: "Could not access camera. Please try again.",
                 switchCamera: "Switch Camera",
                 capture: "Capture",
-                photoCaptured: "Photo captured"
+                photoCaptured: "Photo captured",
+                captureTip: "Tap to capture",
+                close: "Close"
             },
             de: {
                 admin: "Admin",
@@ -450,7 +465,9 @@
                 cameraErrorGeneric: "Kamera konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
                 switchCamera: "Kamera wechseln",
                 capture: "Aufnehmen",
-                photoCaptured: "Foto aufgenommen"
+                photoCaptured: "Foto aufgenommen",
+                captureTip: "Tippen zum Aufnehmen",
+                close: "Schließen"
             }
         };
 
@@ -690,6 +707,13 @@
             const preview = document.getElementById('imagePreview');
             const previewImg = document.getElementById('previewImage');
             const display = document.getElementById('fileNameDisplay');
+            const flash = document.getElementById('cameraFlash');
+
+            // Flash effect
+            flash.style.opacity = '1';
+            setTimeout(() => {
+                flash.style.opacity = '0';
+            }, 100);
 
             // Set canvas size to video dimensions
             canvas.width = video.videoWidth;
@@ -716,8 +740,10 @@
                 // Enable verify button
                 updateVerifyButton();
 
-                // Close camera modal
-                closeCamera();
+                // Close camera modal after short delay for flash effect
+                setTimeout(() => {
+                    closeCamera();
+                }, 150);
 
             }, 'image/jpeg', 0.9);
         }
