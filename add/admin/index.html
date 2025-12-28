@@ -46,8 +46,34 @@
         <div id="adminPanel" class="hidden">
             <div class="bg-specter-card border border-specter-border rounded-2xl overflow-hidden">
                 <div class="p-6 border-b border-specter-border">
-                    <h2 class="text-2xl font-bold" data-i18n="manageProofs">Manage Proofs</h2>
-                    <p class="text-specter-textMuted mt-1" data-i18n="manageProofsDesc">Select entries to remove from the database</p>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold" data-i18n="manageProofs">Manage Proofs</h2>
+                            <p class="text-specter-textMuted mt-1" data-i18n="manageProofsDesc">View all proofs and manage entries</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                            <div class="relative">
+                                <svg class="absolute left-3 top-2 w-5 h-5 text-specter-textMuted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <input type="text" id="searchInput"
+                                    class="w-full sm:w-48 pl-11 pr-3 py-2 bg-specter-dark border border-specter-border rounded-lg text-sm focus:border-specter-cyan focus:outline-none"
+                                    data-placeholder-i18n="searchPlaceholder">
+                            </div>
+                            <select id="sortSelect" class="bg-specter-dark border border-specter-border rounded-lg px-4 py-2 text-sm focus:border-specter-cyan focus:outline-none">
+                                <option value="date-desc" data-i18n="sortNewest">Newest first</option>
+                                <option value="date-asc" data-i18n="sortOldest">Oldest first</option>
+                                <option value="bagId-asc" data-i18n="sortBagIdAsc">Bag ID (asc)</option>
+                                <option value="bagId-desc" data-i18n="sortBagIdDesc">Bag ID (desc)</option>
+                            </select>
+                            <button onclick="exportCSV()" class="flex items-center gap-2 px-4 py-2 bg-specter-dark border border-specter-border rounded-lg hover:border-specter-cyan transition text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                <span data-i18n="exportCSV">CSV</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="p-4 border-b border-specter-border bg-specter-darker flex items-center justify-between">
@@ -131,7 +157,7 @@
                 authRequiredDesc: "Please authenticate on the Add page first to access the admin dashboard.",
                 goToAdd: "Go to Add Page",
                 manageProofs: "Manage Proofs",
-                manageProofsDesc: "Select entries to remove from the database",
+                manageProofsDesc: "View all proofs and manage entries",
                 selectAll: "Select All",
                 deleteSelected: "Delete Selected",
                 colBagId: "Bag ID",
@@ -148,7 +174,14 @@
                 verified: "Verified",
                 pending: "Pending",
                 selectedCount: "{count} selected",
-                deleteCount: "Delete {count} proof(s)?"
+                deleteCount: "Delete {count} proof(s)?",
+                searchPlaceholder: "Search...",
+                sortNewest: "Newest first",
+                sortOldest: "Oldest first",
+                sortBagIdAsc: "Bag ID (asc)",
+                sortBagIdDesc: "Bag ID (desc)",
+                exportCSV: "CSV",
+                noResults: "No results found"
             },
             de: {
                 backToAdd: "Zurück zum Hinzufügen",
