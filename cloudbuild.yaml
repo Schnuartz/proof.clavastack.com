@@ -27,7 +27,7 @@ steps:
       - '--allow-unauthenticated'
       - '--port=8080'
       - '--no-traffic'
-      - '--set-env-vars=GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U,GCS_BUCKET_NAME=clavastack-proofs,AUTH_TOKENS={"RotBaden5BettStuhl":"Schnuartz"}'
+      - '--set-env-vars=GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U,GCS_BUCKET_NAME=clavastack-proofs,AUTH_TOKENS={\"RotBaden5BettStuhl\":\"Schnuartz\"}'
 
 images:
   - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
