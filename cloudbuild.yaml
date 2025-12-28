@@ -16,8 +16,7 @@ steps:
       - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
 
   # Deploy to Cloud Run using gcloud
-  # Note: Environment variables (GEMINI_API_KEY, AUTH_TOKEN, GCS_BUCKET_NAME)
-  # are set manually in Cloud Run and preserved across deployments
+  # Note: Environment variables are preserved from previous deployment
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
@@ -28,6 +27,7 @@ steps:
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'
+      - '--no-traffic'
 
 images:
   - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
