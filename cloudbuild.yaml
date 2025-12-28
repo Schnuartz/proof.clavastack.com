@@ -15,28 +15,22 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
 
-  # Deploy to Cloud Run using gcloud
+  # Deploy to Cloud Run with all environment variables using shell
   - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
     args:
-      - 'run'
-      - 'deploy'
-      - 'secure-ai-proxy-server'
-      - '--image=gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
-      - '--region=europe-west1'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
-      - '--port=8080'
-
-  # Update environment variables
-  - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'run'
-      - 'services'
-      - 'update'
-      - 'secure-ai-proxy-server'
-      - '--region=europe-west1'
-      - '--update-env-vars=GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U,GCS_BUCKET_NAME=clavastack-proofs,AUTH_TOKENS={"RotBaden5BettStuhl":"Schnuartz"}'
-      - '--project=$PROJECT_ID'
+      - '-c'
+      - |
+        gcloud run deploy secure-ai-proxy-server \
+          --image=gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA \
+          --region=europe-west1 \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8080 \
+          --set-env-vars='GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U' \
+          --set-env-vars='GCS_BUCKET_NAME=clavastack-proofs' \
+          --set-env-vars='AUTH_TOKENS={"RotBaden5BettStuhl":"Schnuartz"}' \
+          --project=$PROJECT_ID
 
 images:
   - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
