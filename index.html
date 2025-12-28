@@ -1146,7 +1146,23 @@
 
                 } catch (error) {
                     console.error('Scan error:', error);
-                    alert('Failed to scan bag. Please try again or enter manually.');
+                    console.error('Error details:', {
+                        message: error.message,
+                        stack: error.stack,
+                        type: error.type,
+                        status: error.status
+                    });
+
+                    // Show more detailed error message
+                    let errorMsg = 'Failed to scan bag. ';
+                    if (error.message.includes('CORS') || error.message.includes('cors')) {
+                        errorMsg += 'CORS error - check browser console for details.';
+                    } else if (error.message.includes('AI analysis failed')) {
+                        errorMsg += 'AI service returned an error. Please try again.';
+                    } else {
+                        errorMsg += error.message || 'Please try again or enter manually.';
+                    }
+                    alert(errorMsg);
                 } finally {
                     scanButton.disabled = false;
                     scanButton.innerHTML = `
