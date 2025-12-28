@@ -21,16 +21,19 @@ steps:
     args:
       - '-c'
       - |
+        set -x
+        echo "Deploying to Cloud Run..."
+        echo "Project ID: $PROJECT_ID"
+        echo "Image: gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA"
         gcloud run deploy secure-ai-proxy-server \
           --image=gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA \
           --region=europe-west1 \
           --platform=managed \
           --allow-unauthenticated \
           --port=8080 \
-          --set-env-vars='GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U' \
-          --set-env-vars='GCS_BUCKET_NAME=clavastack-proofs' \
-          --set-env-vars='AUTH_TOKENS={"RotBaden5BettStuhl":"Schnuartz"}' \
+          --set-env-vars='GEMINI_API_KEY=AIzaSyDMvPskFIjtItOt7qekN7X9hVkdZrybt7U,GCS_BUCKET_NAME=clavastack-proofs,AUTH_TOKENS={"RotBaden5BettStuhl":"Schnuartz"}' \
           --project=$PROJECT_ID
+        echo "Deploy completed with exit code: $?"
 
 images:
   - 'gcr.io/$PROJECT_ID/secure-ai-proxy-server:$SHORT_SHA'
