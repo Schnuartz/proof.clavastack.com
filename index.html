@@ -295,6 +295,27 @@
                     </svg>
                     Verify Bag
                 </button>
+
+                <!-- OR divider -->
+                <div class="relative my-6">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-specter-border"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-3 bg-specter-card text-specter-textMuted" data-i18n="orDivider">or</span>
+                    </div>
+                </div>
+
+                <!-- Camera Scan Button -->
+                <button id="cameraScanButton"
+                        class="w-full py-6 bg-gradient-to-r from-green-500 to-green-600 text-white text-xl font-bold rounded-2xl hover:shadow-lg hover:shadow-green-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span data-i18n="scanYourBag">Scan Your Bag</span>
+                </button>
             </div>
 
             <!-- Result Card (Hidden by default, shown with animation) -->
@@ -487,6 +508,66 @@
         </div>
     </div>
 
+    <!-- Camera Scan Modal -->
+    <div id="cameraScanModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="relative max-w-2xl w-full">
+            <!-- Close Button -->
+            <button onclick="closeCameraScan()" class="absolute -top-12 right-0 text-white hover:text-specter-cyan text-3xl z-10">&times;</button>
+
+            <div class="bg-specter-card border border-specter-border rounded-2xl overflow-hidden shadow-2xl">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-green-500/20 to-green-600/20 border-b border-specter-border px-6 py-4">
+                    <h2 class="text-2xl font-bold text-white" data-i18n="scanTitle">Scan Tamper-Evident Bag</h2>
+                    <p class="text-specter-textMuted text-sm mt-1" data-i18n="scanInstructions">Position your bag in the camera frame and capture</p>
+                </div>
+
+                <!-- Camera Container -->
+                <div class="relative bg-black">
+                    <!-- Video Preview -->
+                    <video id="cameraScanPreview" class="w-full h-auto bg-black" style="max-height: 500px;"></video>
+
+                    <!-- Loading Spinner -->
+                    <div id="cameraScanLoading" class="absolute inset-0 hidden flex items-center justify-center bg-black/50">
+                        <div class="text-center">
+                            <div class="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                            <p class="text-white font-semibold" data-i18n="cameraInitializing">Initializing camera...</p>
+                        </div>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="cameraScanError" class="absolute inset-0 hidden flex items-center justify-center bg-red-500/20">
+                        <div class="text-center">
+                            <svg class="w-12 h-12 text-red-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p id="cameraScanErrorMsg" class="text-red-500 font-semibold" data-i18n="cameraError">Unable to access camera</p>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Canvas for Photo Capture -->
+                    <canvas id="cameraScanCanvas" class="hidden"></canvas>
+                </div>
+
+                <!-- Controls -->
+                <div class="bg-specter-darker border-t border-specter-border p-4 flex gap-3 justify-center flex-wrap">
+                    <button id="cameraSwitchButton" onclick="switchCameraScan()" class="px-4 py-3 bg-specter-dark border border-specter-border text-white font-semibold rounded-lg hover:border-specter-cyan transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                        </svg>
+                        <span data-i18n="cameraSwitchCamera">Switch Camera</span>
+                    </button>
+                    <button onclick="captureScanPhoto()" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-green-500/30 transition flex items-center gap-2 flex-1 sm:flex-none justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span data-i18n="cameraCapture">Capture</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Packer Modal -->
     <div id="packerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-specter-card border border-specter-border rounded-2xl shadow-2xl max-w-md mx-4 p-6">
@@ -565,7 +646,17 @@
                 viewBlockchainProof: "View Blockchain Proof",
                 notFoundTitle: "Bag Not Found",
                 notFoundMessage: "No verification found for this bag ID. Please check the ID and try again.",
-                notFoundHint: "Tip: Bag IDs are case-sensitive. Make sure to enter the exact ID from your tamper-evident bag."
+                notFoundHint: "Tip: Bag IDs are case-sensitive. Make sure to enter the exact ID from your tamper-evident bag.",
+                orDivider: "or",
+                scanYourBag: "Scan Your Bag",
+                analyzing: "Analyzing...",
+                cameraCapture: "Capture",
+                cameraSwitchCamera: "Switch Camera",
+                cameraClose: "Close",
+                scanTitle: "Scan Tamper-Evident Bag",
+                scanInstructions: "Position your bag in the camera frame and capture",
+                cameraInitializing: "Initializing camera...",
+                cameraError: "Unable to access camera"
             },
             de: {
                 visitShop: "Zum Shop",
@@ -618,7 +709,17 @@
                 viewBlockchainProof: "Blockchain-Nachweis Anzeigen",
                 notFoundTitle: "Beutel Nicht Gefunden",
                 notFoundMessage: "Keine Verifizierung für diese Beutel-ID gefunden. Bitte überprüfen Sie die ID und versuchen Sie es erneut.",
-                notFoundHint: "Tipp: Beutel-IDs sind groß-/kleinschreibungsabhängig. Stellen Sie sicher, dass Sie die genaue ID von Ihrem Manipulationsschutz-Beutel eingeben."
+                notFoundHint: "Tipp: Beutel-IDs sind groß-/kleinschreibungsabhängig. Stellen Sie sicher, dass Sie die genaue ID von Ihrem Manipulationsschutz-Beutel eingeben.",
+                orDivider: "oder",
+                scanYourBag: "Beutel Scannen",
+                analyzing: "Analysiere...",
+                cameraCapture: "Aufnehmen",
+                cameraSwitchCamera: "Kamera Wechseln",
+                cameraClose: "Schließen",
+                scanTitle: "Manipulationsschutz-Beutel Scannen",
+                scanInstructions: "Platzieren Sie Ihren Beutel im Kamerarahmen und machen Sie ein Foto",
+                cameraInitializing: "Initialisiere Kamera...",
+                cameraError: "Auf Kamera kann nicht zugegriffen werden"
             }
         };
 
@@ -906,6 +1007,169 @@
         });
 
         // ===========================================
+        // Camera Scan Functions
+        // ===========================================
+        let cameraScanStream = null;
+        let currentScanFacingMode = 'environment';
+
+        async function openCameraScan() {
+            const modal = document.getElementById('cameraScanModal');
+            const video = document.getElementById('cameraScanPreview');
+            const loading = document.getElementById('cameraScanLoading');
+            const errorDiv = document.getElementById('cameraScanError');
+
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            loading.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: currentScanFacingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                cameraScanStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraScanStream;
+                await video.play();
+                loading.classList.add('hidden');
+            } catch (error) {
+                console.error('Camera error:', error);
+                loading.classList.add('hidden');
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        function closeCameraScan() {
+            const modal = document.getElementById('cameraScanModal');
+            const video = document.getElementById('cameraScanPreview');
+
+            if (cameraScanStream) {
+                cameraScanStream.getTracks().forEach(track => track.stop());
+                cameraScanStream = null;
+            }
+            video.srcObject = null;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        async function switchCameraScan() {
+            currentScanFacingMode = currentScanFacingMode === 'environment' ? 'user' : 'environment';
+
+            if (cameraScanStream) {
+                cameraScanStream.getTracks().forEach(track => track.stop());
+            }
+
+            const video = document.getElementById('cameraScanPreview');
+            const loading = document.getElementById('cameraScanLoading');
+
+            loading.classList.remove('hidden');
+
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: currentScanFacingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                cameraScanStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraScanStream;
+                await video.play();
+                loading.classList.add('hidden');
+            } catch (error) {
+                console.error('Camera switch error:', error);
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function captureScanPhoto() {
+            const video = document.getElementById('cameraScanPreview');
+            const canvas = document.getElementById('cameraScanCanvas');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob(async (blob) => {
+                const file = new File([blob], `scan_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+                closeCameraScan();
+
+                const scanButton = document.getElementById('cameraScanButton');
+                scanButton.disabled = true;
+                scanButton.innerHTML = `
+                    <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span data-i18n="analyzing">Analyzing...</span>
+                `;
+
+                try {
+                    const base64Data = await base64EncodeFile(file);
+
+                    const response = await fetch(`${API_BASE_URL}/api/verify-serial-number`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            mimeType: file.type,
+                            data: base64Data
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('AI analysis failed');
+                    }
+
+                    const result = await response.json();
+
+                    if (result && result.length > 0 && result[0].bagId) {
+                        const bagId = result[0].bagId;
+
+                        const searchInput = document.getElementById('bagIdSearchInput');
+                        searchInput.value = bagId;
+
+                        setTimeout(() => {
+                            verifyBag();
+                        }, 300);
+                    } else {
+                        alert('No Bag ID found in image. Please try again.');
+                    }
+
+                } catch (error) {
+                    console.error('Scan error:', error);
+                    alert('Failed to scan bag. Please try again or enter manually.');
+                } finally {
+                    scanButton.disabled = false;
+                    scanButton.innerHTML = `
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span data-i18n="scanYourBag">Scan Your Bag</span>
+                    `;
+                }
+            }, 'image/jpeg', 0.9);
+        }
+
+        function base64EncodeFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ===========================================
         // Search Verification
         // ===========================================
         let currentResultProof = null;
@@ -1042,6 +1306,19 @@
             if (verifyButton) {
                 verifyButton.addEventListener('click', verifyBag);
             }
+
+            // Camera scan button - Click opens camera
+            const cameraScanButton = document.getElementById('cameraScanButton');
+            if (cameraScanButton) {
+                cameraScanButton.addEventListener('click', openCameraScan);
+            }
+
+            // Camera scan modal backdrop close
+            document.getElementById('cameraScanModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('cameraScanModal')) {
+                    closeCameraScan();
+                }
+            });
         });
     </script>
 </body>

@@ -219,6 +219,11 @@ app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) =
         // Prüfe ob BagId bereits existiert
         const existingIndex = data.proofs.findIndex(p => p.bagId === bagId);
 
+        // Log wenn Duplikat erkannt wird
+        if (existingIndex >= 0) {
+            console.warn(`[DUPLICATE] BagId "${bagId}" already exists. Will update existing proof.`);
+        }
+
         let imageUrl = null;
 
         // Bild hochladen falls vorhanden
@@ -256,8 +261,10 @@ app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) =
             updatedAt: new Date().toISOString()
         };
 
+        let isDuplicate = false;
         if (existingIndex >= 0) {
             // Update existierenden Proof (behalte altes Bild und sealedBy wenn kein neues)
+            isDuplicate = true;
             if (!imageUrl && data.proofs[existingIndex].imageUrl) {
                 proof.imageUrl = data.proofs[existingIndex].imageUrl;
             }
@@ -279,7 +286,10 @@ app.post('/api/proofs', authenticate, upload.single('image'), async (req, res) =
             return res.status(500).json({ error: 'Failed to save proof' });
         }
 
-        res.status(201).json(proof);
+        // Add duplicate flag to response
+        const response = { ...proof, isDuplicate };
+        const statusCode = isDuplicate ? 200 : 201;
+        res.status(statusCode).json(response);
     } catch (error) {
         console.error("Fehler beim Erstellen des Proofs:", error);
         res.status(500).json({ error: 'Internal Server Error', details: error.message });
@@ -363,13 +373,13 @@ app.delete('/api/proofs/:bagId', authenticate, async (req, res) => {
 // ORIGINAL GEMINI ENDPOINT
 // =====================================================
 
-app.post('/api/verify-serial-number', authenticate, async (req, res) => {
+app.post('/api/verify-serial-number', async (req, res) => {
     if (!GEMINI_API_KEY) {
         return res.status(500).json({ error: 'KI-API Key nicht auf dem Server konfiguriert.' });
     }
 
     try {
-        console.log("Anfrage am /api/verify-serial-number empfangen und authentifiziert.");
+        console.log("Anfrage am /api/verify-serial-number empfangen (öffentlicher Zugriff).");
 
         const { data: base64Data, mimeType } = req.body;
 
