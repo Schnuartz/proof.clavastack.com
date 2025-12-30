@@ -410,12 +410,18 @@ Beispiel für die gewünschte JSON-Ausgabe:
                 { role: "user", parts: [{ text: prompt }] },
                 { role: "user", parts: [{ inlineData: { data: base64Data, mimeType: mimeType } }] }
             ],
-            config: {
+            generationConfig: {
                 responseMimeType: "application/json"
             }
         });
 
-        const jsonText = response.candidates[0].content.parts[0].text;
+        // Defensive Response-Verarbeitung
+        if (!response || !response.text) {
+            console.error("Gemini API returned empty response:", JSON.stringify(response, null, 2));
+            return res.status(500).json({ error: 'KI hat keine gültige Antwort geliefert.' });
+        }
+
+        const jsonText = response.text;
         const result = JSON.parse(jsonText);
         const processedResult = applyMajorityPrinciple(result);
 
